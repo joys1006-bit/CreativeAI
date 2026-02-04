@@ -201,7 +201,7 @@
 /* Popular Grid */
 .popular-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-md);
 }
 
@@ -223,22 +223,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 48px;
+    font-size: 64px;
     background: white;
 }
 
 .creation-info {
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md);
+    text-align: center;
 }
 
 .creation-title {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     margin-bottom: var(--spacing-xs);
 }
 
 .creation-likes {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-light);
 }
 
