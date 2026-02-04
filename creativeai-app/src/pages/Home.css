@@ -174,10 +174,28 @@
     margin-bottom: var(--spacing-xl);
 }
 
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
 .section h3 {
     font-size: 20px;
     font-weight: 600;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 0;
+}
+
+.more-link {
+    font-size: 14px;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.more-link:hover {
+    color: var(--primary);
 }
 
 /* Popular Grid */
