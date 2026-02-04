@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import apiService from '../services/api'
 import useStore from '../store/store'
 import './AvatarMaker.css'
@@ -59,111 +60,156 @@ function AvatarMaker() {
         setTimeout(() => {
             clearInterval(interval)
             setProgress(100)
-
-            // 히스토리에 저장
-            addToHistory({
-                type: 'avatar',
-                style: selectedStyle,
-                result: { emoji: '🎭', variations: ['👨‍🎨', '👩‍🎨', '🧑‍🎨', '👤'] },
-                image: uploadedImage,
-            })
-
-            // 크레딧 차감
             useCredits(20)
 
-            // 결과 페이지로 이동
-            setTimeout(() => {
-                navigate('/result', {
-                    state: {
-                        result: { emoji: '🎭', variations: ['👨‍🎨', '👩‍🎨', '🧑‍🎨', '👤'] }
-                    }
-                })
-            }, 500)
+            navigate('/result', {
+                state: {
+                    result: { emoji: '🎭', variations: ['👨‍🎨', '👩‍🎨', '🧑‍🎨', '👤'] }
+                }
+            })
         }, 3000)
+    }
+
+    const pageVariants = {
+        initial: { opacity: 0, x: 20 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -20 }
     }
 
     return (
         <div className="avatar-maker">
-            <header className="header">
-                <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+            <header className="header glass-effect">
+                <motion.button
+                    className="back-btn"
+                    onClick={() => navigate(-1)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                >←</motion.button>
                 <h2>AI 아바타 만들기</h2>
-                <div></div>
+                <div style={{ width: 40 }}></div>
             </header>
 
-            <main className="content">
+            <AnimatePresence mode="wait">
                 {step === 'input' && (
-                    <div className="input-section">
-                        <h3>어떻게 만들까요?</h3>
+                    <motion.main
+                        className="content"
+                        key="input"
+                        variants={pageVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                    >
+                        <div className="input-section">
+                            <h3>어떻게 만들까요?</h3>
 
-                        <label htmlFor="avatar-upload" className="upload-card">
-                            <div className="upload-icon">📷</div>
-                            <div className="upload-text">
-                                <div className="upload-title">사진으로 만들기</div>
-                                <div className="upload-subtitle">갤러리에서 선택</div>
+                            <motion.label
+                                htmlFor="avatar-upload"
+                                className="upload-card glass-card"
+                                whileHover={{ scale: 1.02, y: -5 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <div className="upload-icon">📷</div>
+                                <div className="upload-text">
+                                    <div className="upload-title">사진으로 만들기</div>
+                                    <div className="upload-subtitle">갤러리에서 선택</div>
+                                </div>
+                            </motion.label>
+                            <input
+                                id="avatar-upload"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                style={{ display: 'none' }}
+                            />
+
+                            <div className="info-box glass-card">
+                                <h4>💡 팁</h4>
+                                <ul>
+                                    <li>정면을 바라보는 사진이 좋아요</li>
+                                    <li>밝은 곳에서 찍은 사진을 사용하세요</li>
+                                    <li>얼굴이 크게 나온 사진이 효과적이에요</li>
+                                </ul>
                             </div>
-                        </label>
-                        <input
-                            id="avatar-upload"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            style={{ display: 'none' }}
-                        />
-
-                        <div className="info-box">
-                            <h4>💡 팁</h4>
-                            <ul>
-                                <li>정면을 바라보는 사진이 좋아요</li>
-                                <li>밝은 곳에서 찍은 사진을 사용하세요</li>
-                                <li>얼굴이 크게 나온 사진이 효과적이에요</li>
-                            </ul>
                         </div>
-                    </div>
+                    </motion.main>
                 )}
 
                 {step === 'style' && !generating && (
-                    <div className="style-section">
-                        {uploadedImage && (
-                            <div className="preview-image">
-                                <img src={uploadedImage} alt="Uploaded" />
-                            </div>
-                        )}
-
-                        <h3>스타일 선택</h3>
-                        <div className="style-grid">
-                            {styles.map(style => (
-                                <div
-                                    key={style.id}
-                                    className={`style-card ${selectedStyle === style.id ? 'active' : ''}`}
-                                    onClick={() => setSelectedStyle(style.id)}
-                                >
-                                    <div className="style-emoji">{style.emoji}</div>
-                                    <div className="style-name">{style.name}</div>
-                                    <div className="style-desc">{style.description}</div>
+                    <motion.main
+                        className="content"
+                        key="style"
+                        variants={pageVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                    >
+                        <div className="style-section">
+                            {uploadedImage && (
+                                <div className="preview-image glass-card">
+                                    <img src={uploadedImage} alt="Uploaded" />
                                 </div>
-                            ))}
-                        </div>
+                            )}
 
-                        <button className="btn-generate" onClick={handleGenerate}>
-                            아바타 생성하기 (20 크레딧)
-                        </button>
-                    </div>
+                            <h3>스타일 선택</h3>
+                            <div className="style-grid">
+                                {styles.map(style => (
+                                    <motion.div
+                                        key={style.id}
+                                        className={`style-card glass-card ${selectedStyle === style.id ? 'active' : ''}`}
+                                        onClick={() => setSelectedStyle(style.id)}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        layoutId={`style-${style.id}`}
+                                    >
+                                        <div className="style-emoji">{style.emoji}</div>
+                                        <div className="style-name">{style.name}</div>
+                                        <div className="style-desc">{style.description}</div>
+                                    </motion.div>
+                                ))}
+                            </div>
+
+                            <motion.button
+                                className="btn-generate btn-large"
+                                onClick={handleGenerate}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <span className="btn-icon">✨</span>
+                                아바타 생성하기 (20 크레딧)
+                            </motion.button>
+                        </div>
+                    </motion.main>
                 )}
 
                 {generating && (
-                    <div className="generating-section">
+                    <motion.main
+                        className="generating-section"
+                        key="generating"
+                        variants={pageVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                    >
                         <div className="loading-animation">
-                            <div className="avatar-spinner"></div>
+                            <motion.div
+                                className="avatar-spinner"
+                                animate={{ rotate: 360 }}
+                                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                            />
                         </div>
                         <h2>AI 아바타 생성 중...</h2>
                         <p>당신만의 특별한 아바타를 만들고 있어요!</p>
-                        <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                        <div className="progress-bar glass-card">
+                            <motion.div
+                                className="progress-fill"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                            />
                         </div>
                         <div className="progress-text">{progress}%</div>
-                    </div>
+                    </motion.main>
                 )}
-            </main>
+            </AnimatePresence>
         </div>
     )
 }

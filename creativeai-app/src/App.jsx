@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
+import './styles/common.css' // Import Common Styles
 import useStore from './store/store'
 
 // Pages

@@ -101,7 +101,8 @@
 .content {
     flex: 1;
     padding: var(--spacing-lg);
-    padding-bottom: 100px;
+    padding-bottom: 120px !important;
+    /* 하단 네비게이션(80px) + 여백(40px) 강제 적용 */
 }
 
 .greeting h2 {
@@ -268,23 +269,26 @@
     bottom: 0;
     left: 0;
     right: 0;
+    height: 80px;
+    background: var(--surface);
     display: flex;
-    background: var(--bg);
+    justify-content: space-around;
+    align-items: center;
     border-top: 1px solid var(--border);
-    padding: var(--spacing-sm) 0;
-    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1000;
 }
 
 .nav-item {
-    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-sm);
-    border: none;
+    justify-content: center;
     background: none;
+    border: none;
     color: var(--text-light);
+    gap: 4px;
+    padding: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -293,30 +297,30 @@
     color: var(--primary);
 }
 
-.nav-item.create-btn {
-    position: relative;
-    top: -20px;
-}
-
-.nav-item.create-btn .nav-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 24px;
-    box-shadow: var(--shadow-primary);
-}
-
 .nav-icon {
     font-size: 24px;
 }
 
 .nav-label {
-    font-size: 12px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.create-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    margin-top: -28px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-btn .nav-icon {
+    font-size: 32px;
 }
 
 @media (min-width: 768px) {
