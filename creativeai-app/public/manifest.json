@@ -1,0 +1,30 @@
+{
+    "name": "creativeai-app",
+    "short_name": "CreativeAI",
+    "description": "AI 기반 디자인 창작 플랫폼",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#667eea",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "design",
+        "creativity",
+        "ai"
+    ],
+    "screenshots": []
+}
