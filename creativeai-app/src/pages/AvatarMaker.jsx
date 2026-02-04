@@ -36,131 +36,105 @@ function AvatarMaker() {
     }
 
     const handleGenerate = async () => {
+        if (!uploadedImage || !selectedStyle) {
+            alert('이미지와 스타일을 선택해주세요!')
+            return
+        }
+
         setGenerating(true)
         setProgress(0)
 
-        // 진행 상황 시뮬레이션
-        const interval = setInterval(() => {
-            setProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval)
-                    return 100
-                }
-                return prev + 10
-            })
-        }, 300)
-
-        // 3초 후 완료
-        setTimeout(() => {
-            clearInterval(interval)
-            setProgress(100)
-
-            // 히스토리에 저장
-            addToHistory({
-                type: 'avatar',
-                style: selectedStyle,
-                result: { emoji: '🎭', variations: ['👨‍🎨', '👩‍🎨', '🧑‍🎨', '👤'] },
-                image: uploadedImage,
-            })
-
-            // 크레딧 차감
-            useCredits(20)
-
-            // 결과 페이지로 이동
-            setTimeout(() => {
-                navigate('/result', {
-                    state: {
-                        result: { emoji: '🎭', variations: ['👨‍🎨', '👩‍🎨', '🧑‍🎨', '👤'] }
-                    }
-                })
+        result: { emoji: '🎭', variations: ['👨‍🎨', '👩‍🎨', '🧑‍🎨', '👤'] }
+    }
+})
             }, 500)
         }, 3000)
     }
 
-    return (
-        <div className="avatar-maker">
-            <header className="header">
-                <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-                <h2>AI 아바타 만들기</h2>
-                <div></div>
-            </header>
+return (
+    <div className="avatar-maker">
+        <header className="header">
+            <button className="back-btn" onClick={() => navigate(-1)}>←</button>
+            <h2>AI 아바타 만들기</h2>
+            <div></div>
+        </header>
 
-            <main className="content">
-                {step === 'input' && (
-                    <div className="input-section">
-                        <h3>어떻게 만들까요?</h3>
+        <main className="content">
+            {step === 'input' && (
+                <div className="input-section">
+                    <h3>어떻게 만들까요?</h3>
 
-                        <label htmlFor="avatar-upload" className="upload-card">
-                            <div className="upload-icon">📷</div>
-                            <div className="upload-text">
-                                <div className="upload-title">사진으로 만들기</div>
-                                <div className="upload-subtitle">갤러리에서 선택</div>
+                    <label htmlFor="avatar-upload" className="upload-card">
+                        <div className="upload-icon">📷</div>
+                        <div className="upload-text">
+                            <div className="upload-title">사진으로 만들기</div>
+                            <div className="upload-subtitle">갤러리에서 선택</div>
+                        </div>
+                    </label>
+                    <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        style={{ display: 'none' }}
+                    />
+
+                    <div className="info-box">
+                        <h4>💡 팁</h4>
+                        <ul>
+                            <li>정면을 바라보는 사진이 좋아요</li>
+                            <li>밝은 곳에서 찍은 사진을 사용하세요</li>
+                            <li>얼굴이 크게 나온 사진이 효과적이에요</li>
+                        </ul>
+                    </div>
+                </div>
+            )}
+
+            {step === 'style' && !generating && (
+                <div className="style-section">
+                    {uploadedImage && (
+                        <div className="preview-image">
+                            <img src={uploadedImage} alt="Uploaded" />
+                        </div>
+                    )}
+
+                    <h3>스타일 선택</h3>
+                    <div className="style-grid">
+                        {styles.map(style => (
+                            <div
+                                key={style.id}
+                                className={`style-card ${selectedStyle === style.id ? 'active' : ''}`}
+                                onClick={() => setSelectedStyle(style.id)}
+                            >
+                                <div className="style-emoji">{style.emoji}</div>
+                                <div className="style-name">{style.name}</div>
+                                <div className="style-desc">{style.description}</div>
                             </div>
-                        </label>
-                        <input
-                            id="avatar-upload"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            style={{ display: 'none' }}
-                        />
-
-                        <div className="info-box">
-                            <h4>💡 팁</h4>
-                            <ul>
-                                <li>정면을 바라보는 사진이 좋아요</li>
-                                <li>밝은 곳에서 찍은 사진을 사용하세요</li>
-                                <li>얼굴이 크게 나온 사진이 효과적이에요</li>
-                            </ul>
-                        </div>
+                        ))}
                     </div>
-                )}
 
-                {step === 'style' && !generating && (
-                    <div className="style-section">
-                        {uploadedImage && (
-                            <div className="preview-image">
-                                <img src={uploadedImage} alt="Uploaded" />
-                            </div>
-                        )}
+                    <button className="btn-generate" onClick={handleGenerate}>
+                        아바타 생성하기 (20 크레딧)
+                    </button>
+                </div>
+            )}
 
-                        <h3>스타일 선택</h3>
-                        <div className="style-grid">
-                            {styles.map(style => (
-                                <div
-                                    key={style.id}
-                                    className={`style-card ${selectedStyle === style.id ? 'active' : ''}`}
-                                    onClick={() => setSelectedStyle(style.id)}
-                                >
-                                    <div className="style-emoji">{style.emoji}</div>
-                                    <div className="style-name">{style.name}</div>
-                                    <div className="style-desc">{style.description}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <button className="btn-generate" onClick={handleGenerate}>
-                            아바타 생성하기 (20 크레딧)
-                        </button>
+            {generating && (
+                <div className="generating-section">
+                    <div className="loading-animation">
+                        <div className="avatar-spinner"></div>
                     </div>
-                )}
-
-                {generating && (
-                    <div className="generating-section">
-                        <div className="loading-animation">
-                            <div className="avatar-spinner"></div>
-                        </div>
-                        <h2>AI 아바타 생성 중...</h2>
-                        <p>당신만의 특별한 아바타를 만들고 있어요!</p>
-                        <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-                        </div>
-                        <div className="progress-text">{progress}%</div>
+                    <h2>AI 아바타 생성 중...</h2>
+                    <p>당신만의 특별한 아바타를 만들고 있어요!</p>
+                    <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${progress}%` }}></div>
                     </div>
-                )}
-            </main>
-        </div>
-    )
+                    <div className="progress-text">{progress}%</div>
+                </div>
+            )}
+        </main>
+    </div>
+)
 }
 
 export default AvatarMaker
