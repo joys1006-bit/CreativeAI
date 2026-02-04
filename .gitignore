@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backend
+creativeai-backend/.gradle/
+creativeai-backend/build/
+creativeai-backend/out/
+creativeai-backend/*.jar
+creativeai-backend/*.war
+creativeai-backend/*.class
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Temporary files
+*.tmp
+*.temp
+
+# Environment
+.env
+.env.local

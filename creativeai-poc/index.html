@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>CreativeAI - AI 디자인 창작 플랫폼</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 온보딩 화면 -->
+    <div id="onboarding" class="screen active">
+        <div class="onboarding-container">
+            <div class="onboarding-slide active" data-slide="0">
+                <div class="onboarding-animation">
+                    <div class="emoji-animation">🎨</div>
+                </div>
+                <h1>나만의 이모티콘 만들기</h1>
+                <p>사진 한 장으로 3초 만에<br>AI가 이모티콘을 만들어드려요</p>
+            </div>
+            
+            <div class="onboarding-slide" data-slide="1">
+                <div class="onboarding-animation">
+                    <div class="beauty-animation">
+                        <div class="before-after">
+                            <span class="before">😐</span>
+                            <span class="arrow">→</span>
+                            <span class="after">✨😊</span>
+                        </div>
+                    </div>
+                </div>
+                <h1>AI 뷰티 필터</h1>
+                <p>자연스럽고 예쁘게<br>과하지 않은 보정</p>
+            </div>
+            
+            <div class="onboarding-slide" data-slide="2">
+                <div class="onboarding-animation">
+                    <div class="marketplace-animation">🛍️</div>
+                </div>
+                <h1>크리에이터가 되어보세요</h1>
+                <p>작품을 판매하고<br>수익을 창출하세요</p>
+            </div>
+            
+            <div class="onboarding-dots">
+                <span class="dot active" data-dot="0"></span>
+                <span class="dot" data-dot="1"></span>
+                <span class="dot" data-dot="2"></span>
+            </div>
+            
+            <button class="btn-primary onboarding-btn" id="onboardingNext">다음</button>
+        </div>
+    </div>
+
+    <!-- 홈 화면 -->
+    <div id="home" class="screen">
+        <div class="header">
+            <div class="logo">CreativeAI</div>
+            <div class="header-icons">
+                <button class="icon-btn">🔔</button>
+                <button class="icon-btn">👤</button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                <h2>안녕하세요! 👋</h2>
+                <p>오늘은 무엇을 만들까요?</p>
+            </div>
+            
+            <div class="quick-menu">
+                <div class="menu-card" data-feature="emoji">
+                    <div class="menu-icon">🎨</div>
+                    <div class="menu-title">이모티콘</div>
+                    <div class="menu-subtitle">만들기</div>
+                </div>
+                <div class="menu-card" data-feature="beauty">
+                    <div class="menu-icon">✨</div>
+                    <div class="menu-title">뷰티</div>
+                    <div class="menu-subtitle">필터</div>
+                </div>
+                <div class="menu-card" data-feature="avatar">
+                    <div class="menu-icon">🎭</div>
+                    <div class="menu-title">아바타</div>
+                    <div class="menu-subtitle">생성</div>
+                </div>
+                <div class="menu-card" data-feature="edit">
+                    <div class="menu-icon">🖼️</div>
+                    <div class="menu-title">사진</div>
+                    <div class="menu-subtitle">편집</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>🔥 인기 크리에이션</h3>
+                <div class="popular-grid">
+                    <div class="creation-card">
+                        <div class="creation-image">🐱</div>
+                        <div class="creation-info">
+                            <div class="creation-title">귀여운 고양이</div>
+                            <div class="creation-likes">❤️ 1.2k</div>
+                        </div>
+                    </div>
+                    <div class="creation-card">
+                        <div class="creation-image">🐶</div>
+                        <div class="creation-info">
+                            <div class="creation-title">강아지 친구</div>
+                            <div class="creation-likes">❤️ 980</div>
+                        </div>
+                    </div>
+                    <div class="creation-card">
+                        <div class="creation-image">🦊</div>
+                        <div class="creation-info">
+                            <div class="creation-title">여우 이모티콘</div>
+                            <div class="creation-likes">❤️ 756</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>🛍️ 마켓플레이스</h3>
+                <div class="marketplace-preview">
+                    <div class="marketplace-card">
+                        <div class="marketplace-image">📦</div>
+                        <div class="marketplace-title">이모티콘 팩</div>
+                        <div class="marketplace-price">₩2,900</div>
+                    </div>
+                    <div class="marketplace-card">
+                        <div class="marketplace-image">🎨</div>
+                        <div class="marketplace-title">프리미엄 템플릿</div>
+                        <div class="marketplace-price">₩4,900</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-nav="home">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">홈</span>
+            </button>
+            <button class="nav-item" data-nav="gallery">
+                <span class="nav-icon">🖼️</span>
+                <span class="nav-label">갤러리</span>
+            </button>
+            <button class="nav-item create-btn" data-nav="create">
+                <span class="nav-icon">➕</span>
+            </button>
+            <button class="nav-item" data-nav="market">
+                <span class="nav-icon">🛍️</span>
+                <span class="nav-label">마켓</span>
+            </button>
+            <button class="nav-item" data-nav="my">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">MY</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- 이모티콘 메이커 화면 -->
+    <div id="emojiMaker" class="screen">
+        <div class="header">
+            <button class="back-btn" onclick="goBack()">←</button>
+            <h2>이모티콘 만들기</h2>
+            <div></div>
+        </div>
+        
+        <div class="content">
+            <div class="input-options">
+                <h3>어떻게 만들까요?</h3>
+                
+                <button class="option-card" id="uploadPhoto">
+                    <div class="option-icon">📷</div>
+                    <div class="option-text">
+                        <div class="option-title">사진으로 만들기</div>
+                        <div class="option-subtitle">갤러리에서 선택</div>
+                    </div>
+                </button>
+                
+                <button class="option-card" id="textPrompt">
+                    <div class="option-icon">✍️</div>
+                    <div class="option-text">
+                        <div class="option-title">텍스트로 만들기</div>
+                        <div class="option-subtitle">설명을 입력하세요</div>
+                    </div>
+                </button>
+                
+                <button class="option-card">
+                    <div class="option-icon">🔄</div>
+                    <div class="option-text">
+                        <div class="option-title">기존 리믹스하기</div>
+                        <div class="option-subtitle">인기 이모티콘 변형</div>
+                    </div>
+                </button>
+            </div>
+            
+            <!-- 스타일 선택 (숨김 상태) -->
+            <div id="styleSelection" class="style-selection" style="display: none;">
+                <div class="uploaded-preview" id="uploadedPreview"></div>
+                
+                <h3>스타일 선택</h3>
+                <div class="style-grid">
+                    <div class="style-card active" data-style="kakao">
+                        <div class="style-preview">💬</div>
+                        <div class="style-name">카톡 스타일</div>
+                    </div>
+                    <div class="style-card" data-style="line">
+                        <div class="style-preview">🎯</div>
+                        <div class="style-name">라인 스타일</div>
+                    </div>
+                    <div class="style-card" data-style="cute">
+                        <div class="style-preview">🌸</div>
+                        <div class="style-name">귀여움</div>
+                    </div>
+                    <div class="style-card" data-style="minimal">
+                        <div class="style-preview">⚪</div>
+                        <div class="style-name">미니멀</div>
+                    </div>
+                    <div class="style-card" data-style="3d">
+                        <div class="style-preview">🎲</div>
+                        <div class="style-name">3D</div>
+                    </div>
+                    <div class="style-card" data-style="retro">
+                        <div class="style-preview">👾</div>
+                        <div class="style-name">레트로</div>
+                    </div>
+                </div>
+                
+                <div class="generation-options">
+                    <h4>생성 옵션</h4>
+                    <label class="radio-option">
+                        <input type="radio" name="genType" value="single" checked>
+                        <span>단일 (10 크레딧)</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="genType" value="pack8">
+                        <span>팩 8개 (50 크레딧)</span>
+                    </label>
+                </div>
+                
+                <button class="btn-primary" id="generateEmoji">생성하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 생성 중 화면 -->
+    <div id="generating" class="screen">
+        <div class="generating-container">
+            <div class="loading-animation">
+                <div class="spinner"></div>
+            </div>
+            <h2>이모티콘 생성 중...</h2>
+            <p>AI가 열심히 만들고 있어요!</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">0%</div>
+            <p class="time-estimate">예상 시간: <span id="timeEstimate">3초</span></p>
+        </div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="result" class="screen">
+        <div class="header">
+            <button class="back-btn" onclick="goToHome()">←</button>
+            <h2>완성! 🎉</h2>
+            <div></div>
+        </div>
+        
+        <div class="content">
+            <div class="result-preview" id="resultPreview">
+                <!-- 생성된 이모티콘이 여기 표시됩니다 -->
+            </div>
+            
+            <div class="edit-tools">
+                <h4>편집 도구</h4>
+                <div class="tool-buttons">
+                    <button class="tool-btn">텍스트</button>
+                    <button class="tool-btn">색상</button>
+                    <button class="tool-btn">배경</button>
+                    <button class="tool-btn">크기</button>
+                </div>
+            </div>
+            
+            <div class="other-versions">
+                <h4>다른 버전 (스와이프)</h4>
+                <div class="version-scroll">
+                    <div class="version-card">
+                        <div class="version-preview">🎨</div>
+                    </div>
+                    <div class="version-card">
+                        <div class="version-preview">🎭</div>
+                    </div>
+                    <div class="version-card">
+                        <div class="version-preview">🎪</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn-secondary">🔄 다시생성</button>
+                <button class="btn-primary">💾 저장</button>
+                <button class="btn-primary">📤 공유</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 뷰티 필터 화면 -->
+    <div id="beautyFilter" class="screen">
+        <div class="header">
+            <button class="back-btn" onclick="goBack()">←</button>
+            <h2>뷰티 필터</h2>
+            <button class="icon-btn">⚙️</button>
+        </div>
+        
+        <div class="content">
+            <div class="camera-preview">
+                <div class="preview-placeholder">
+                    <p>📸 카메라 프리뷰</p>
+                    <p class="preview-note">(실제 앱에서는 실시간 카메라)</p>
+                </div>
+            </div>
+            
+            <div class="filter-controls">
+                <div class="auto-beauty">
+                    <label class="toggle-switch">
+                        <span>원터치 뷰티</span>
+                        <input type="checkbox" id="autoBeauty">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div class="slider-control">
+                    <label>피부 보정</label>
+                    <input type="range" min="0" max="100" value="50" class="beauty-slider">
+                    <span class="slider-value">50</span>
+                </div>
+                
+                <div class="slider-control">
+                    <label>눈 크기</label>
+                    <input type="range" min="0" max="100" value="30" class="beauty-slider">
+                    <span class="slider-value">30</span>
+                </div>
+                
+                <div class="slider-control">
+                    <label>코 라인</label>
+                    <input type="range" min="0" max="100" value="20" class="beauty-slider">
+                    <span class="slider-value">20</span>
+                </div>
+                
+                <div class="slider-control">
+                    <label>턱선</label>
+                    <input type="range" min="0" max="100" value="25" class="beauty-slider">
+                    <span class="slider-value">25</span>
+                </div>
+            </div>
+            
+            <div class="filter-tabs">
+                <button class="filter-tab active">기본</button>
+                <button class="filter-tab">메이크업</button>
+                <button class="filter-tab">필터</button>
+            </div>
+            
+            <div class="camera-actions">
+                <button class="camera-btn">📸 촬영</button>
+                <button class="camera-btn">🖼️ 갤러리</button>
+                <button class="camera-btn">↔️ 비교</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+    
+    <script src="app.js"></script>
+</body>
+</html>
