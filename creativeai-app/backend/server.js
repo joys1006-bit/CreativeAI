@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const db = require('./config/database');
+const path = require('path');
 
-// 환경 변수 로드
-dotenv.config();
+// 환경 변수 로드 (상위 디렉토리의 .env 파일)
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+const db = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
