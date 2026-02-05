@@ -4,16 +4,16 @@ import com.creativeai.application.port.output.AIModelPort
 import com.creativeai.domain.emoji.Emoji
 import com.creativeai.domain.emoji.EmojiRepository
 import com.creativeai.domain.emoji.EmojiStyle
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Service
-class EmojiService(
-        private val emojiRepository: EmojiRepository,
-        private val aiModelPort: AIModelPort
-) {
+class EmojiService {
+    @Autowired lateinit var emojiRepository: EmojiRepository
+    @Autowired lateinit var aiModelPort: AIModelPort
     @Transactional
     fun generateEmoji(imageData: String, styleId: String): Mono<Emoji> {
         return Mono.defer {

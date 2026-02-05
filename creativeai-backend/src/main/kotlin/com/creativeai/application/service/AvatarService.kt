@@ -1,9 +1,11 @@
 package com.creativeai.application.service
 
+/** 아바타 서비스 비즈니스 로직 및 트랜잭션 관리 */
 import com.creativeai.application.port.output.AIModelPort
 import com.creativeai.domain.avatar.Avatar
 import com.creativeai.domain.avatar.AvatarRepository
 import com.creativeai.domain.avatar.AvatarStyle
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
@@ -11,10 +13,9 @@ import reactor.core.publisher.Mono
 
 /** 아바타 서비스 비즈니스 로직 및 트랜잭션 관리 */
 @Service
-class AvatarService(
-        private val avatarRepository: AvatarRepository,
-        private val aiModelPort: AIModelPort
-) {
+class AvatarService {
+    @Autowired lateinit var avatarRepository: AvatarRepository
+    @Autowired lateinit var aiModelPort: AIModelPort
 
     /** 아바타 생성 요청 처리 */
     @Transactional

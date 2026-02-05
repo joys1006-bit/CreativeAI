@@ -3,6 +3,7 @@ package com.creativeai.adapter.input.web
 import com.creativeai.application.service.CreationService
 import com.creativeai.common.response.ApiResponse
 import java.time.format.DateTimeFormatter
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
@@ -10,7 +11,8 @@ import reactor.core.publisher.Mono
 @RestController
 @RequestMapping("/api/creations")
 @CrossOrigin(origins = ["http://localhost:3000"])
-class CreationsController(private val creationService: CreationService) {
+class CreationsController {
+        @Autowired lateinit var creationService: CreationService
 
         /** 인기 창작물 조회 API GET /api/creations/popular */
         @GetMapping("/popular")

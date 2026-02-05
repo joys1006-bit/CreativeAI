@@ -2,6 +2,7 @@ package com.creativeai.adapter.input.web
 
 import com.creativeai.application.service.AvatarService
 import com.creativeai.common.response.ApiResponse
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
@@ -9,7 +10,8 @@ import reactor.core.publisher.Mono
 @RestController
 @RequestMapping("/api/avatar")
 @CrossOrigin(origins = ["http://localhost:3000"])
-class AvatarController(private val avatarService: AvatarService) {
+class AvatarController {
+        @Autowired lateinit var avatarService: AvatarService
 
         /** 아바타 생성 요청 API POST /api/avatar/generate */
         @PostMapping("/generate")
@@ -33,7 +35,18 @@ class AvatarController(private val avatarService: AvatarService) {
                                                                 if (avatar.isCompleted()) 100
                                                                 else 0,
                                                         estimatedTime = 5,
-                                                        resultImageUrl = avatar.generatedImage
+                                                        resultImageUrl = avatar.generatedImage,
+                                                        files =
+                                                                if (avatar.generatedImage != null)
+                                                                        listOf(
+                                                                                GeneratedFileDto(
+                                                                                        file_url =
+                                                                                                avatar.generatedImage!!,
+                                                                                        is_primary =
+                                                                                                true
+                                                                                )
+                                                                        )
+                                                                else emptyList()
                                                 ),
                                         message = "아바타 생성 요청이 성공적으로 접수되었습니다."
                                 )
@@ -80,7 +93,18 @@ class AvatarController(private val avatarService: AvatarService) {
                                                                 else if (avatar.isFailed()) 0
                                                                 else 50,
                                                         estimatedTime = 0,
-                                                        resultImageUrl = avatar.generatedImage
+                                                        resultImageUrl = avatar.generatedImage,
+                                                        files =
+                                                                if (avatar.generatedImage != null)
+                                                                        listOf(
+                                                                                GeneratedFileDto(
+                                                                                        file_url =
+                                                                                                avatar.generatedImage!!,
+                                                                                        is_primary =
+                                                                                                true
+                                                                                )
+                                                                        )
+                                                                else emptyList()
                                                 ),
                                         message = "조회 성공"
                                 )
@@ -97,7 +121,8 @@ data class AvatarGenerationResult(
         val status: String,
         val progress: Int,
         val estimatedTime: Int,
-        val resultImageUrl: String? = null
+        val resultImageUrl: String? = null,
+        val files: List<GeneratedFileDto> = emptyList()
 )
 
 data class AvatarStyleDto(val id: String, val name: String, val description: String)

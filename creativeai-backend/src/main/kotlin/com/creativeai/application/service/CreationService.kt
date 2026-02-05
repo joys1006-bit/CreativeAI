@@ -1,13 +1,15 @@
 package com.creativeai.application.service
 
+/** 창작물 통합 서비스 모든 종류의 창작물(Emoji, Avatar, Photo 등)에 대한 조회 및 관리 */
+import com.creativeai.adapter.output.persistence.CreationR2dbcRepository
 import com.creativeai.adapter.output.persistence.entity.CreationEntity
-import com.creativeai.adapter.output.persistence.repository.CreationR2dbcRepository
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 
-/** 창작물 통합 서비스 모든 종류의 창작물(Emoji, Avatar, Photo 등)에 대한 조회 및 관리 */
 @Service
-class CreationService(private val creationRepository: CreationR2dbcRepository) {
+class CreationService {
+    @Autowired lateinit var creationRepository: CreationR2dbcRepository
 
     /** 특정 사용자의 창작물 목록 조회 */
     fun getUserCreations(userId: Long): Flux<CreationEntity> {

@@ -2,13 +2,12 @@ package com.creativeai.adapter.output.persistence
 
 import com.creativeai.adapter.output.persistence.entity.CreationEntity
 import com.creativeai.adapter.output.persistence.entity.CreationFileEntity
-import com.creativeai.adapter.output.persistence.repository.CreationFileR2dbcRepository
-import com.creativeai.adapter.output.persistence.repository.CreationR2dbcRepository
 import com.creativeai.domain.avatar.Avatar
 import com.creativeai.domain.avatar.AvatarRepository
 import com.creativeai.domain.avatar.AvatarStyle
 import com.creativeai.domain.avatar.GenerationStatus
 import java.time.LocalDateTime
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import org.springframework.transaction.reactive.TransactionalOperator
 import reactor.core.publisher.Flux
@@ -16,11 +15,10 @@ import reactor.core.publisher.Mono
 
 /** Avatar 도메인 영속성 어댑터 */
 @Component
-class PersistenceAvatarAdapter(
-        private val creationRepository: CreationR2dbcRepository,
-        private val fileRepository: CreationFileR2dbcRepository,
-        private val transactionalOperator: TransactionalOperator
-) : AvatarRepository {
+class PersistenceAvatarAdapter : AvatarRepository {
+    @Autowired lateinit var creationRepository: CreationR2dbcRepository
+    @Autowired lateinit var fileRepository: CreationFileR2dbcRepository
+    @Autowired lateinit var transactionalOperator: TransactionalOperator
 
     override fun save(avatar: Avatar): Mono<Avatar> {
         // 도메인 -> 엔티티 매핑

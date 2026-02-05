@@ -2,6 +2,7 @@ package com.creativeai.adapter.input.web
 
 import com.creativeai.application.service.EmojiService
 import com.creativeai.common.response.ApiResponse
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
@@ -9,7 +10,8 @@ import reactor.core.publisher.Mono
 @RestController
 @RequestMapping("/api/emoji")
 @CrossOrigin(origins = ["http://localhost:3000"])
-class EmojiController(private val emojiService: EmojiService) {
+class EmojiController {
+    @Autowired lateinit var emojiService: EmojiService
 
     /** 이모티콘 생성 요청 API POST /api/emoji/generate */
     @PostMapping("/generate")
@@ -63,7 +65,17 @@ class EmojiController(private val emojiService: EmojiService) {
                                                     if (emoji.isCompleted()) 100
                                                     else if (emoji.isFailed()) 0 else 50,
                                             estimatedTime = 0,
-                                            resultImageUrl = emoji.generatedImage
+                                            resultImageUrl = emoji.generatedImage,
+                                            files =
+                                                    if (emoji.generatedImage != null)
+                                                            listOf(
+                                                                    GeneratedFileDto(
+                                                                            file_url =
+                                                                                    emoji.generatedImage!!,
+                                                                            is_primary = true
+                                                                    )
+                                                            )
+                                                    else emptyList()
                                     ),
                             message = "조회 성공"
                     )
@@ -95,7 +107,14 @@ data class EmojiGenerationResult(
         val status: String,
         val progress: Int,
         val estimatedTime: Int,
-        val resultImageUrl: String? = null
+        val resultImageUrl: String? = null,
+        val files: List<GeneratedFileDto> = emptyList()
+)
+
+data class GeneratedFileDto(
+        val file_url: String,
+        val thumbnail_url: String? = null,
+        val is_primary: Boolean = false
 )
 
 data class EmojiStyleDto(val id: String, val name: String, val description: String)
