@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # 1. Database Service
   mysql:
     image: mysql:8.0
     container_name: creativeai-mysql
@@ -13,20 +14,53 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      # 데이터 영구 저장
       - mysql_data:/var/lib/mysql
-      # 초기 스키마 자동 실행
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./database/indexes.sql:/docker-entrypoint-initdb.d/02-indexes.sql
       - ./database/seeds.sql:/docker-entrypoint-initdb.d/03-seeds.sql
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD" ]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - creativeai-network
 
-  # 선택사항: phpMyAdmin (웹 기반 MySQL 관리 도구)
+  # 2. Backend Service (Spring Boot)
+  backend:
+    build:
+      context: ../creativeai-backend
+      dockerfile: Dockerfile
+    container_name: creativeai-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_R2DBC_URL: r2dbc:mysql://mysql:3306/creativeai_db
+      SPRING_R2DBC_USERNAME: creativeai_user
+      SPRING_R2DBC_PASSWORD: creativeai_pass_2024
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - creativeai-network
+
+  # 3. Frontend Service (React + Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: creativeai-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - creativeai-network
+
+  # 4. Optional: phpMyAdmin
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: creativeai-phpmyadmin
@@ -40,7 +74,13 @@ services:
       - "8081:80"
     depends_on:
       - mysql
+    networks:
+      - creativeai-network
 
 volumes:
   mysql_data:
     driver: local
+
+networks:
+  creativeai-network:
+    driver: bridge

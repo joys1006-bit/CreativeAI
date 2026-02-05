@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import apiService from '../services/api'
 import './BeautyFilter.css'
 
 function BeautyFilter() {
@@ -42,7 +43,8 @@ function BeautyFilter() {
             }
         } catch (err) {
             console.error('카메라 접근 실패:', err)
-            alert('카메라에 접근할 수 없습니다. 권한을 확인해주세요.')
+            // 배포 환경/http 에서는 카메라 접근이 제한될 수 있음
+            // alert('카메라에 접근할 수 없습니다. 권한을 확인해주세요.')
         }
     }
 
@@ -104,6 +106,31 @@ function BeautyFilter() {
                 noseSlim: 20,
                 jawline: 25,
             })
+        }
+    }
+
+    const handleSaveToServer = async () => {
+        if (!canvasRef.current) return
+
+        const canvas = canvasRef.current
+        const imageData = canvas.toDataURL('image/png')
+
+        try {
+            // 백엔드에 뷰티 필터 적용 및 저장 요청
+            // 현재 설정된 필터 값을 기반으로 요청
+            const filterType = autoBeauty ? 'auto_beauty' : 'custom'
+            const intensity = filters.brightness // 대표값으로 사용
+
+            const result = await apiService.applyBeautyFilter(imageData, filterType, intensity)
+
+            if (result.status === 'completed' || result.resultImageUrl) {
+                alert('갤러리에 저장되었습니다!')
+            } else {
+                alert('저장 중입니다..')
+            }
+        } catch (error) {
+            console.error('Save failed:', error)
+            alert('저장에 실패했습니다.')
         }
     }
 
@@ -209,8 +236,8 @@ function BeautyFilter() {
 
                 <div className="camera-actions">
                     <button className="camera-btn" onClick={capturePhoto}>📸 촬영</button>
+                    <button className="camera-btn" onClick={handleSaveToServer}>💾 저장</button>
                     <button className="camera-btn" onClick={() => navigate('/emoji-maker')}>🖼️ 갤러리</button>
-                    <button className="camera-btn">↔️ 비교</button>
                 </div>
             </main>
         </div>

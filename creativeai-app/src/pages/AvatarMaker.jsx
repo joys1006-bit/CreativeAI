@@ -42,32 +42,39 @@ function AvatarMaker() {
             return
         }
 
-        setGenerating(true)
-        setProgress(0)
+        try {
+            setGenerating(true)
+            setProgress(0)
 
-        // 진행 상황 시뮬레이션
-        const interval = setInterval(() => {
-            setProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval)
-                    return 100
-                }
-                return prev + 10
-            })
-        }, 300)
+            // 1. 생성 요청
+            const initialResponse = await apiService.generateAvatar(uploadedImage, selectedStyle)
+            const generationId = initialResponse.id
 
-        // 3초 후 완료
-        setTimeout(() => {
-            clearInterval(interval)
-            setProgress(100)
+            // 2. 폴링으로 상태 확인
+            const finalResult = await apiService.pollGenerationStatus(
+                generationId,
+                'avatar',
+                (currentProgress) => setProgress(currentProgress)
+            )
+
+            // 3. 완료 처리
             useCredits(20)
-
             navigate('/result', {
                 state: {
-                    result: { emoji: '🎭', variations: ['👨‍🎨', '👩‍🎨', '🧑‍🎨', '👤'] }
+                    result: {
+                        ...finalResult,
+                        style_name: styles.find(s => s.id === selectedStyle)?.name,
+                        created_at: new Date().toISOString()
+                    }
                 }
             })
-        }, 3000)
+
+        } catch (error) {
+            console.error('Avatar generation failed:', error)
+            alert('아바타 생성에 실패했습니다. 다시 시도해주세요.')
+        } finally {
+            setGenerating(false)
+        }
     }
 
     const pageVariants = {

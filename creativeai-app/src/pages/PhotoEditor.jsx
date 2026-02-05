@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import apiService from '../services/api'
 import './PhotoEditor.css'
 
 function PhotoEditor() {
@@ -35,8 +36,30 @@ function PhotoEditor() {
         }
     }
 
-    const handleSave = () => {
-        alert('이미지가 저장되었습니다!')
+    const handleSave = async () => {
+        if (!uploadedImage) {
+            alert('편집할 이미지가 없습니다.')
+            return
+        }
+
+        try {
+            // 현재 적용된 필터 정보를 파라미터로 전송
+            const params = { ...filters }
+
+            // 실제 구현에서는 캔버스에서 이미지를 추출하여 전송해야 하지만,
+            // 여기서는 원본 이미지와 파라미터를 보냅니다.
+            const result = await apiService.editPhoto(uploadedImage, 'filter_adjust', params)
+
+            if (result.status === 'completed' || result.resultImageUrl) {
+                alert('이미지가 성공적으로 저장되었습니다!')
+                // 결과 페이지로 이동하거나 다운로드 로직 추가 가능
+            } else {
+                alert('이미지 저장 중입니다. 잠시 후 확인해주세요.')
+            }
+        } catch (error) {
+            console.error('Save failed:', error)
+            alert('저장에 실패했습니다.')
+        }
     }
 
     const handleRemoveBackground = () => {

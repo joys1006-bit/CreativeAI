@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 class ApiService {
     constructor() {
@@ -92,6 +92,36 @@ class ApiService {
             })
         });
 
+        return result.data;
+    }
+
+    /**
+     * 사진 편집
+     */
+    async editPhoto(imageData, operation, params = {}) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/photo-editor/edit`, {
+            method: 'POST',
+            body: JSON.stringify({
+                imageData,
+                operation,
+                params
+            })
+        });
+        return result.data;
+    }
+
+    /**
+     * 뷰티 필터 적용
+     */
+    async applyBeautyFilter(imageData, filterType, intensity) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/beauty-filter/apply`, {
+            method: 'POST',
+            body: JSON.stringify({
+                imageData,
+                filterType,
+                intensity
+            })
+        });
         return result.data;
     }
 
