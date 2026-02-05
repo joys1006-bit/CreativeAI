@@ -1,62 +1,59 @@
 package com.creativeai.application.service
 
-import com.creativeai.application.port.input.*
 import com.creativeai.application.port.output.AIModelPort
-import com.creativeai.domain.emoji.*
+import com.creativeai.domain.emoji.Emoji
+import com.creativeai.domain.emoji.EmojiRepository
+import com.creativeai.domain.emoji.EmojiStyle
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-/**
- * 애플리케이션 서비스: 이모티콘 생성 유스케이스 구현
- */
 @Service
 class EmojiService(
-    private val emojiRepository: EmojiRepository,
-    private val aiModelPort: AIModelPort
-) : GenerateEmojiUseCase, GetEmojiStylesUseCase {
-    
-    override fun execute(command: GenerateEmojiCommand): Mono<EmojiGenerationResult> {
-        // 1. 도메인 모델 생성
-        val style = EmojiStyle.fromId(command.styleId)
-        val emoji = Emoji.create(command.imageData, style)
-        
-        // 2. 처리 시작
-        emoji.startProcessing()
-        
-        // 3. 저장
-        return emojiRepository.save(emoji)
-            .flatMap { savedEmoji ->
-                // 4. AI 모델 호출 (비동기)
-                aiModelPort.generateEmoji(command.imageData, command.styleId)
-                    .flatMap { generatedData ->
-                        // 5. 도메인 모델 업데이트
-                        savedEmoji.completeGeneration(
-                            generatedData.generatedImage,
-                            generatedData.variations
-                        )
+        private val emojiRepository: EmojiRepository,
+        private val aiModelPort: AIModelPort
+) {
+    @Transactional
+    fun generateEmoji(imageData: String, styleId: String): Mono<Emoji> {
+        return Mono.defer {
+            val style = EmojiStyle.fromId(styleId)
+            val newEmoji = Emoji.create(imageData, style)
+
+            // 1. 초기 상태(PENDING)로 저장
+            emojiRepository
+                    .save(newEmoji)
+                    .flatMap { savedEmoji ->
+                        // 2. 프로세싱 시작 상태로 변경
+                        savedEmoji.startProcessing()
                         emojiRepository.save(savedEmoji)
                     }
-                    .onErrorResume { error ->
-                        // 6. 실패 처리
-                        savedEmoji.failGeneration(error.message ?: "Unknown error")
-                        emojiRepository.save(savedEmoji)
+                    .flatMap { processingEmoji ->
+                        // 3. AI 모델 호출 (비동기)
+                        aiModelPort
+                                .generateEmoji(imageData, styleId)
+                                .flatMap { result ->
+                                    // 4. 성공 시 완료 처리
+                                    processingEmoji.completeGeneration(
+                                            generatedImage = result.generatedImage,
+                                            variations = result.variations
+                                    )
+                                    emojiRepository.save(processingEmoji)
+                                }
+                                .onErrorResume { e ->
+                                    // 5. 실패 시 에러 처리
+                                    processingEmoji.failGeneration(e.message ?: "Unknown error")
+                                    emojiRepository.save(processingEmoji)
+                                }
                     }
-                    .thenReturn(savedEmoji)
-            }
-            .map { emoji ->
-                // 7. DTO 변환
-                EmojiGenerationResult(
-                    id = emoji.id,
-                    status = emoji.status.name.lowercase(),
-                    progress = if (emoji.isCompleted()) 100 else 0,
-                    estimatedTime = if (emoji.isCompleted()) 0 else 3
-                )
-            }
+        }
     }
-    
-    override fun execute(): Mono<List<EmojiStyleDto>> {
-        return Mono.just(
-            EmojiStyle.allStyles().map { EmojiStyleDto.from(it) }
-        )
+
+    fun getAllEmojis(): Flux<Emoji> {
+        return emojiRepository.findAll()
+    }
+
+    fun getEmojiById(id: String): Mono<Emoji> {
+        return emojiRepository.findById(id)
     }
 }

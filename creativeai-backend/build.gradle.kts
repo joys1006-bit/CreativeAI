@@ -14,11 +14,15 @@ java { sourceCompatibility = JavaVersion.VERSION_17 }
 repositories { mavenCentral() }
 
 dependencies {
-    // Spring WebFlux (ë¹„ë™ê¸°/ë…¼ë¸”ë¡œí‚¹)
+    // Spring WebFlux (ºñµ¿±â/³íºí·ÎÅ·)
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
-    // Kotlin Coroutines (ë¦¬ì•¡í‹°ë¸Œ ì§€ì›)
+    // Kotlin Coroutines (¸®¾×Æ¼ºê Áö¿ø)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+
+    // R2DBC & MySQL
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
+    implementation("io.asyncer:r2dbc-mysql:1.0.2")
 
     // Jackson (JSON)
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
@@ -37,6 +41,3 @@ dependencies {
 tasks.withType<Test> { useJUnitPlatform() }
 
 kotlin { jvmToolchain(17) }
-kotlin {
-    jvmToolchain(17)
-}
