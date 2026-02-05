@@ -8,11 +8,6 @@ import reactor.core.publisher.Mono
 
 /**
  * 애플리케이션 서비스: 이모티콘 생성 유스케이스 구현
- * 
- * 책임:
- * - 도메인 로직 조율
- * - 트랜잭션 관리
- * - 포트 간 데이터 변환
  */
 @Service
 class EmojiService(

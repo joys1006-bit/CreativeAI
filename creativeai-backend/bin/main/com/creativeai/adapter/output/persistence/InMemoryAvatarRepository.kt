@@ -1,32 +1,32 @@
 package com.creativeai.adapter.output.persistence
 
-import com.creativeai.domain.emoji.Emoji
-import com.creativeai.domain.emoji.EmojiRepository
+import com.creativeai.domain.avatar.Avatar
+import com.creativeai.domain.avatar.AvatarRepository
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 어댑터: In-Memory Repository 구현
+ * In-Memory Avatar Repository
  */
 @Repository
-class InMemoryEmojiRepository : EmojiRepository {
+class InMemoryAvatarRepository : AvatarRepository {
     
-    private val storage = ConcurrentHashMap<String, Emoji>()
+    private val storage = ConcurrentHashMap<String, Avatar>()
     
-    override fun save(emoji: Emoji): Mono<Emoji> {
+    override fun save(avatar: Avatar): Mono<Avatar> {
         return Mono.fromCallable {
-            storage[emoji.id] = emoji
-            emoji
+            storage[avatar.id] = avatar
+            avatar
         }
     }
     
-    override fun findById(id: String): Mono<Emoji> {
+    override fun findById(id: String): Mono<Avatar> {
         return Mono.justOrEmpty(storage[id])
     }
     
-    override fun findAll(): Flux<Emoji> {
+    override fun findAll(): Flux<Avatar> {
         return Flux.fromIterable(storage.values)
     }
     

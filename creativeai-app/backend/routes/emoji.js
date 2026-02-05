@@ -67,13 +67,20 @@ router.post('/generate', async (req, res) => {
 
                 // 결과 파일 생성 (시뮬레이션)
                 const count = generationType === 'pack8' ? 8 : 1;
+                const styleNames = ['kawaii', 'line-art', '3d', 'watercolor', 'pixel', 'pack'];
+                const randomColors = ['FFB6C1', 'ADD8E6', 'FFE4B5', 'E6E6FA', 'FFD700', 'FFA07A'];
+
                 for (let i = 0; i < count; i++) {
+                    const color = randomColors[i % randomColors.length];
+                    const emojiNumber = Math.floor(Math.random() * 100) + 1;
+
                     await Creation.addFile(creationId, {
                         file_type: 'result_image',
                         variation_index: generationType === 'pack8' ? i : null,
                         file_path: `/uploads/results/emoji_${creationId}_${i}.png`,
-                        file_url: `https://example.com/results/emoji_${creationId}_${i}.png`,
-                        thumbnail_url: `https://example.com/thumbs/emoji_${creationId}_${i}.png`,
+                        // 실제 placeholder 이미지 URL 사용
+                        file_url: `https://ui-avatars.com/api/?name=Emoji+${emojiNumber}&size=512&background=${color}&color=fff&bold=true&format=png`,
+                        thumbnail_url: `https://ui-avatars.com/api/?name=Emoji+${emojiNumber}&size=128&background=${color}&color=fff&bold=true&format=png`,
                         file_size: 51200,
                         mime_type: 'image/png',
                         width: 512,

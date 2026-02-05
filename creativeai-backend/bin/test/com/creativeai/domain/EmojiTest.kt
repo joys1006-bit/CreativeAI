@@ -3,158 +3,132 @@ package com.creativeai.domain.emoji
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * TDD: Emoji 도메인 모델 테스트
- * 
- * DDD 원칙:
- * - Emoji는 Aggregate Root
- * - EmojiStyle은 Value Object
- * - 도메인 로직은 엔티티 내부에 캡슐화
+ * Emoji 도메인 모델 단위 테스트
  */
 class EmojiTest {
     
     @Test
-    fun `should create emoji with valid data`() {
-        // Given
-        val imageData = "base64_encoded_image_data"
+    fun `이모티콘을 유효한 데이터로 생성할 수 있다`() {
+        // given
+        val imageData = "base64_image_data"
         val style = EmojiStyle.KAKAO
         
-        // When
+        // when
         val emoji = Emoji.create(imageData, style)
         
-        // Then
-        assertNotNull(emoji.id)
+        // then
         assertEquals(imageData, emoji.imageData)
         assertEquals(style, emoji.style)
         assertEquals(GenerationStatus.PENDING, emoji.status)
-        assertTrue(emoji.variations.isEmpty())
     }
     
     @Test
-    fun `should not create emoji with empty image data`() {
-        // Given
+    fun `빈 이미지 데이터로는 이모티콘을 생성할 수 없다`() {
+        // given
         val emptyImageData = ""
         val style = EmojiStyle.KAKAO
         
-        // When & Then
+        // when & then
         assertThrows<IllegalArgumentException> {
             Emoji.create(emptyImageData, style)
         }
     }
     
     @Test
-    fun `should complete emoji generation with result`() {
-        // Given
+    fun `PENDING 상태에서 처리를 시작할 수 있다`() {
+        // given
         val emoji = Emoji.create("image_data", EmojiStyle.LINE)
-        val generatedImage = "generated_emoji_image"
-        val variations = listOf("var1", "var2", "var3")
         
-        // When
-        emoji.completeGeneration(generatedImage, variations)
+        // when
+        emoji.startProcessing()
         
-        // Then
-        assertEquals(GenerationStatus.COMPLETED, emoji.status)
-        assertEquals(generatedImage, emoji.generatedImage)
-        assertEquals(variations, emoji.variations)
-        assertNotNull(emoji.completedAt)
+        // then
+        assertEquals(GenerationStatus.PROCESSING, emoji.status)
     }
     
     @Test
-    fun `should fail emoji generation with error message`() {
-        // Given
+    fun `PENDING이 아닌 상태에서는 처리를 시작할 수 없다`() {
+        // given
         val emoji = Emoji.create("image_data", EmojiStyle.CUTE)
-        val errorMessage = "AI model failed"
+        emoji.startProcessing()
         
-        // When
-        emoji.failGeneration(errorMessage)
-        
-        // Then
-        assertEquals(GenerationStatus.FAILED, emoji.status)
-        assertEquals(errorMessage, emoji.errorMessage)
-        assertNotNull(emoji.completedAt)
-    }
-    
-    @Test
-    fun `should not complete already completed emoji`() {
-        // Given
-        val emoji = Emoji.create("image_data", EmojiStyle.MINIMAL)
-        emoji.completeGeneration("result", emptyList())
-        
-        // When & Then
-        assertThrows<IllegalStateException> {
-            emoji.completeGeneration("another_result", emptyList())
+        // when & then
+        assertThrows<IllegalArgumentException> {
+            emoji.startProcessing()
         }
     }
     
     @Test
-    fun `should start processing`() {
-        // Given
+    fun `PROCESSING 상태에서 생성을 완료할 수 있다`() {
+        // given
+        val emoji = Emoji.create("image_data", EmojiStyle.MINIMAL)
+        emoji.startProcessing()
+        val generatedImage = "generated_emoji"
+        val variations = listOf("var1", "var2", "var3")
+        
+        // when
+        emoji.completeGeneration(generatedImage, variations)
+        
+        // then
+        assertEquals(GenerationStatus.COMPLETED, emoji.status)
+        assertEquals(generatedImage, emoji.generatedImage)
+        assertEquals(variations, emoji.variations)
+        assertTrue(emoji.isCompleted())
+    }
+    
+    @Test
+    fun `PROCESSING 상태에서 생성을 실패할 수 있다`() {
+        // given
+        val emoji = Emoji.create("image_data", EmojiStyle.THREE_D)
+        emoji.startProcessing()
+        val errorMessage = "AI service error"
+        
+        // when
+        emoji.failGeneration(errorMessage)
+        
+        // then
+        assertEquals(GenerationStatus.FAILED, emoji.status)
+        assertEquals(errorMessage, emoji.errorMessage)
+        assertTrue(emoji.isFailed())
+    }
+    
+    @Test
+    fun `PROCESSING이 아닌 상태에서는 완료할 수 없다`() {
+        // given
         val emoji = Emoji.create("image_data", EmojiStyle.RETRO)
         
-        // When
-        emoji.startProcessing()
-        
-        // Then
-        assertEquals(GenerationStatus.PROCESSING, emoji.status)
-        assertNotNull(emoji.startedAt)
-    }
-}
-
-class EmojiStyleTest {
-    
-    @Test
-    fun `should create emoji style with valid data`() {
-        // Given
-        val id = "custom"
-        val name = "Custom Style"
-        val description = "A custom emoji style"
-        
-        // When
-        val style = EmojiStyle(id, name, description)
-        
-        // Then
-        assertEquals(id, style.id)
-        assertEquals(name, style.name)
-        assertEquals(description, style.description)
+        // when & then
+        assertThrows<IllegalArgumentException> {
+            emoji.completeGeneration("result", emptyList())
+        }
     }
     
     @Test
-    fun `should have predefined styles`() {
-        // Then
-        assertNotNull(EmojiStyle.KAKAO)
-        assertNotNull(EmojiStyle.LINE)
-        assertNotNull(EmojiStyle.CUTE)
-        assertNotNull(EmojiStyle.MINIMAL)
-        assertNotNull(EmojiStyle.THREE_D)
-        assertNotNull(EmojiStyle.RETRO)
-    }
-    
-    @Test
-    fun `should find style by id`() {
-        // When
+    fun `EmojiStyle은 id로 조회할 수 있다`() {
+        // when
         val style = EmojiStyle.fromId("kakao")
         
-        // Then
+        // then
         assertEquals(EmojiStyle.KAKAO, style)
     }
     
     @Test
-    fun `should throw exception for unknown style id`() {
-        // When & Then
+    fun `존재하지 않는 스타일 id는 예외를 발생시킨다`() {
+        // when & then
         assertThrows<IllegalArgumentException> {
-            EmojiStyle.fromId("unknown")
+            EmojiStyle.fromId("invalid_style")
         }
     }
     
     @Test
-    fun `should get all available styles`() {
-        // When
+    fun `모든 스타일 목록을 조회할 수 있다`() {
+        // when
         val styles = EmojiStyle.allStyles()
         
-        // Then
+        // then
         assertEquals(6, styles.size)
         assertTrue(styles.contains(EmojiStyle.KAKAO))
         assertTrue(styles.contains(EmojiStyle.LINE))

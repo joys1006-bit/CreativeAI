@@ -1,19 +1,15 @@
-package com.creativeai.domain.emoji
+package com.creativeai.domain.avatar
 
 import java.time.LocalDateTime
 import java.util.UUID
 
 /**
- * DDD: Emoji Aggregate Root
- * 
- * 비즈니스 규칙:
- * - 이모티콘은 반드시 이미지 데이터와 스타일을 가져야 함
- * - 생성 상태는 PENDING -> PROCESSING -> COMPLETED/FAILED 순서로만 전환
+ * DDD: Avatar Aggregate Root
  */
-data class Emoji private constructor(
+data class Avatar private constructor(
     val id: String,
     val imageData: String,
-    val style: EmojiStyle,
+    val style: AvatarStyle,
     var status: GenerationStatus,
     var generatedImage: String? = null,
     var variations: List<String> = emptyList(),
@@ -23,10 +19,10 @@ data class Emoji private constructor(
     var completedAt: LocalDateTime? = null
 ) {
     companion object {
-        fun create(imageData: String, style: EmojiStyle): Emoji {
+        fun create(imageData: String, style: AvatarStyle): Avatar {
             require(imageData.isNotBlank()) { "Image data cannot be empty" }
             
-            return Emoji(
+            return Avatar(
                 id = UUID.randomUUID().toString(),
                 imageData = imageData,
                 style = style,
@@ -67,35 +63,35 @@ data class Emoji private constructor(
 }
 
 /**
- * DDD: Value Object - 이모티콘 스타일
+ * DDD: Value Object - 아바타 스타일
  */
-data class EmojiStyle(
+data class AvatarStyle(
     val id: String,
     val name: String,
     val description: String
 ) {
     companion object {
-        val KAKAO = EmojiStyle("kakao", "카톡 스타일", "동그란 캐릭터, 파스텔 톤")
-        val LINE = EmojiStyle("line", "라인 스타일", "심플한 라인, 큰 눈")
-        val CUTE = EmojiStyle("cute", "귀여움", "일본 애니메이션 스타일")
-        val MINIMAL = EmojiStyle("minimal", "미니멀", "단순한 선, 모노톤")
-        val THREE_D = EmojiStyle("3d", "3D", "입체감 있는 캐릭터")
-        val RETRO = EmojiStyle("retro", "레트로", "90년대 픽셀 아트")
+        val ANIME = AvatarStyle("anime", "애니메이션", "일본 애니메이션 스타일")
+        val THREE_D = AvatarStyle("3d", "3D 캐릭터", "입체감 있는 3D 모델")
+        val PIXEL = AvatarStyle("pixel", "픽셀아트", "레트로 픽셀 스타일")
+        val CARTOON = AvatarStyle("cartoon", "카툰", "만화 캐릭터 스타일")
+        val REALISTIC = AvatarStyle("realistic", "사실적", "실제 사진 같은 스타일")
+        val FANTASY = AvatarStyle("fantasy", "판타지", "판타지 세계관")
         
         private val stylesMap = mapOf(
-            "kakao" to KAKAO,
-            "line" to LINE,
-            "cute" to CUTE,
-            "minimal" to MINIMAL,
+            "anime" to ANIME,
             "3d" to THREE_D,
-            "retro" to RETRO
+            "pixel" to PIXEL,
+            "cartoon" to CARTOON,
+            "realistic" to REALISTIC,
+            "fantasy" to FANTASY
         )
         
-        fun fromId(id: String): EmojiStyle {
+        fun fromId(id: String): AvatarStyle {
             return stylesMap[id] ?: throw IllegalArgumentException("Unknown style id: $id")
         }
         
-        fun allStyles(): List<EmojiStyle> {
+        fun allStyles(): List<AvatarStyle> {
             return stylesMap.values.toList()
         }
     }

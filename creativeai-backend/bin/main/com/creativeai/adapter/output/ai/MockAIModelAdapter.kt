@@ -7,8 +7,6 @@ import java.time.Duration
 
 /**
  * 어댑터: Mock AI Model
- * 
- * 실제 프로덕션에서는 Stable Diffusion, DALL-E API 호출
  */
 @Component
 class MockAIModelAdapter : AIModelPort {

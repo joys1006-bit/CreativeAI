@@ -3,9 +3,6 @@ package com.creativeai.adapter.input.web
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
-/**
- * Health Check Controller
- */
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = ["http://localhost:3000"])

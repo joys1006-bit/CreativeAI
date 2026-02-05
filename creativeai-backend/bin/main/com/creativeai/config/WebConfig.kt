@@ -7,8 +7,6 @@ import org.springframework.web.reactive.config.WebFluxConfigurer
 
 /**
  * WebFlux Configuration
- * 
- * CORS 설정 및 기타 웹 설정
  */
 @Configuration
 @EnableWebFlux

@@ -5,32 +5,31 @@ import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
 /**
- * 어댑터: REST API Controller (WebFlux)
+ * 아바타 컨트롤러
  */
 @RestController
-@RequestMapping("/api/emoji")
+@RequestMapping("/api/avatar")
 @CrossOrigin(origins = ["http://localhost:3000"])
-class EmojiController(
-    private val generateEmojiUseCase: GenerateEmojiUseCase,
-    private val getEmojiStylesUseCase: GetEmojiStylesUseCase
+class AvatarController(
+    private val generateAvatarUseCase: GenerateAvatarUseCase,
+    private val getAvatarStylesUseCase: GetAvatarStylesUseCase
 ) {
     
     @PostMapping("/generate")
-    fun generateEmoji(
-        @RequestBody request: EmojiGenerationRequest
-    ): Mono<ApiResponse<EmojiGenerationResult>> {
-        val command = GenerateEmojiCommand(
+    fun generateAvatar(
+        @RequestBody request: AvatarGenerationRequest
+    ): Mono<ApiResponse<AvatarGenerationResult>> {
+        val command = GenerateAvatarCommand(
             imageData = request.imageData ?: "",
-            styleId = request.styleId,
-            generationType = request.generationType
+            styleId = request.styleId
         )
         
-        return generateEmojiUseCase.execute(command)
+        return generateAvatarUseCase.execute(command)
             .map { result ->
                 ApiResponse(
                     success = true,
                     data = result,
-                    message = "이모티콘 생성 요청 성공"
+                    message = "아바타 생성 요청 성공"
                 )
             }
             .onErrorResume { error ->
@@ -45,8 +44,8 @@ class EmojiController(
     }
     
     @GetMapping("/styles")
-    fun getStyles(): Mono<ApiResponse<List<EmojiStyleDto>>> {
-        return getEmojiStylesUseCase.execute()
+    fun getStyles(): Mono<ApiResponse<List<AvatarStyleDto>>> {
+        return getAvatarStylesUseCase.execute()
             .map { styles ->
                 ApiResponse(
                     success = true,
@@ -57,12 +56,11 @@ class EmojiController(
     }
     
     @GetMapping("/generation/{id}")
-    fun getGenerationStatus(@PathVariable id: String): Mono<ApiResponse<EmojiGenerationResult>> {
-        // 간단한 목업 응답
+    fun getGenerationStatus(@PathVariable id: String): Mono<ApiResponse<AvatarGenerationResult>> {
         return Mono.just(
             ApiResponse(
                 success = true,
-                data = EmojiGenerationResult(
+                data = AvatarGenerationResult(
                     id = id,
                     status = "completed",
                     progress = 100,
@@ -74,16 +72,7 @@ class EmojiController(
     }
 }
 
-// DTO
-data class EmojiGenerationRequest(
+data class AvatarGenerationRequest(
     val imageData: String?,
-    val prompt: String?,
-    val styleId: String,
-    val generationType: String
-)
-
-data class ApiResponse<T>(
-    val success: Boolean,
-    val data: T?,
-    val message: String?
+    val styleId: String
 )
