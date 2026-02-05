@@ -1,115 +1,177 @@
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 class ApiService {
     constructor() {
-        this.baseURL = API_BASE_URL
-        this.maxRetries = 3
-        this.retryDelay = 1000
+        this.baseURL = API_BASE_URL;
     }
 
     /**
-     * 재시도 로직이 포함된 fetch
+     * HTTP 요청 헬퍼 (재시도 포함)
      */
-    async fetchWithRetry(url, options = {}, retries = this.maxRetries) {
-        try {
-            const response = await fetch(url, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
+    async fetchWithRetry(url, options = {}, retries = 3) {
+        const defaultOptions = {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+            ...options,
+        };
+
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, defaultOptions);
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({ message: response.statusText }));
+                    throw new Error(error.message || `HTTP ${response.status}`);
                 }
-            })
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.message || `HTTP ${response.status}`)
+                return await response.json();
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
             }
-
-            return await response.json()
-        } catch (error) {
-            if (retries > 0 && this.isRetryableError(error)) {
-                await this.delay(this.retryDelay)
-                return this.fetchWithRetry(url, options, retries - 1)
-            }
-            throw error
         }
     }
 
     /**
-     * 재시도 가능한 에러인지 확인
+     * 스타일 목록 조회
      */
-    isRetryableError(error) {
-        return error.message.includes('NetworkError') ||
-            error.message.includes('Failed to fetch') ||
-            error.message.includes('503')
+    async getStyles(category = null) {
+        const url = category
+            ? `${this.baseURL}/styles?category=${category}`
+            : `${this.baseURL}/styles`;
+
+        const result = await this.fetchWithRetry(url);
+        return result.data || [];
     }
 
     /**
-     * 지연 함수
+     * 이모지 스타일 조회
      */
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms))
-    }
-
-    // ========== Emoji API ==========
-
     async getEmojiStyles() {
-        return this.fetchWithRetry(`${this.baseURL}/emoji/styles`)
+        const result = await this.fetchWithRetry(`${this.baseURL}/emoji/styles`);
+        return result.data || [];
     }
 
-    async generateEmoji(imageData, styleId, generationType = 'single') {
-        return this.fetchWithRetry(`${this.baseURL}/emoji/generate`, {
+    /**
+     * 아바타 스타일 조회
+     */
+    async getAvatarStyles() {
+        const result = await this.fetchWithRetry(`${this.baseURL}/avatar/styles`);
+        return result.data || [];
+    }
+
+    /**
+     * 이모지 생성 시작
+     */
+    async generateEmoji(imageData, styleId, generationType = 'single', userId = 1) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/emoji/generate`, {
             method: 'POST',
             body: JSON.stringify({
                 imageData,
                 styleId,
-                generationType
+                generationType,
+                userId
             })
-        })
+        });
+
+        return result.data;
     }
 
-    async getEmojiGenerationStatus(id) {
-        return this.fetchWithRetry(`${this.baseURL}/emoji/generation/${id}`)
-    }
-
-    // ========== Avatar API ==========
-
-    async getAvatarStyles() {
-        return this.fetchWithRetry(`${this.baseURL}/avatar/styles`)
-    }
-
-    async generateAvatar(imageData, styleId) {
-        return this.fetchWithRetry(`${this.baseURL}/avatar/generate`, {
+    /**
+     * 아바타 생성 시작
+     */
+    async generateAvatar(imageData, styleId, userId = 1) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/avatar/generate`, {
             method: 'POST',
             body: JSON.stringify({
                 imageData,
-                styleId
+                styleId,
+                userId
             })
-        })
+        });
+
+        return result.data;
     }
 
-    async getAvatarGenerationStatus(id) {
-        return this.fetchWithRetry(`${this.baseURL}/avatar/generation/${id}`)
+    /**
+     * 생성 상태 조회 (폴링용)
+     */
+    async getGenerationStatus(id, type = 'emoji') {
+        const endpoint = type === 'emoji'
+            ? `${this.baseURL}/emoji/generation/${id}`
+            : `${this.baseURL}/avatar/generation/${id}`;
+
+        const result = await this.fetchWithRetry(endpoint);
+        return result.data;
     }
 
-    // ========== Creations API ==========
+    /**
+     * 폴링 헬퍼 - 생성 완료까지 대기
+     */
+    async pollGenerationStatus(id, type = 'emoji', onProgress = null) {
+        return new Promise((resolve, reject) => {
+            const poll = async () => {
+                try {
+                    const status = await this.getGenerationStatus(id, type);
 
-    async getPopularCreations() {
-        return this.fetchWithRetry(`${this.baseURL}/creations/popular`)
+                    // 진행률 콜백 호출
+                    if (onProgress) {
+                        onProgress(status.progress);
+                    }
+
+                    // 완료 상태 확인
+                    if (status.status === 'completed') {
+                        resolve(status);
+                    } else if (status.status === 'failed') {
+                        reject(new Error('Generation failed'));
+                    } else {
+                        // 계속 폴링
+                        setTimeout(poll, 1000);
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            };
+
+            poll();
+        });
     }
 
-    // ========== Marketplace API ==========
-
-    async getMarketplaceItems() {
-        return this.fetchWithRetry(`${this.baseURL}/marketplace/items`)
+    /**
+     * 사용자 정보 조회
+     */
+    async getUser(userId) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/users/${userId}`);
+        return result.data;
     }
 
-    // ========== Health Check ==========
+    /**
+     * 사용자 창작물 목록
+     */
+    async getUserCreations(userId, limit = 20, offset = 0) {
+        const result = await this.fetchWithRetry(
+            `${this.baseURL}/users/${userId}/creations?limit=${limit}&offset=${offset}`
+        );
+        return result.data || [];
+    }
 
+    /**
+     * 크레딧 잔액 조회
+     */
+    async getCreditBalance(userId) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/credits/balance/${userId}`);
+        return result.data;
+    }
+
+    /**
+     * Health check
+     */
     async healthCheck() {
-        return this.fetchWithRetry(`${this.baseURL}/health`)
+        return await this.fetchWithRetry(`${this.baseURL}/health`);
     }
 }
-const apiService = new ApiService()
 
-export default apiService
+export const apiService = new ApiService();
+export default apiService;
