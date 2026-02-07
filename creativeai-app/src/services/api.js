@@ -1,17 +1,47 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+/**
+ * ============================================
+ * API 서비스 클래스
+ * ============================================
+ * 
+ * 기능:
+ * - HTTP 요청 헬퍼 (재시도, 토큰 자동 첨부)
+ * - 인증 API (signup, login, logout, refresh)
+ * - 스타일/생성 API
+ * - 사용자 API
+ */
 class ApiService {
     constructor() {
         this.baseURL = API_BASE_URL;
     }
 
+    // ============================================
+    // 토큰 관리
+    // ============================================
+
     /**
-     * HTTP 요청 헬퍼 (재시도 포함)
+     * 저장된 Access Token 가져오기
+     */
+    getAccessToken() {
+        try {
+            const storage = JSON.parse(localStorage.getItem('creativeai-storage') || '{}');
+            return storage.state?.accessToken || null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * HTTP 요청 헬퍼 (재시도 + 토큰 자동 첨부)
      */
     async fetchWithRetry(url, options = {}, retries = 3) {
+        const token = this.getAccessToken();
+
         const defaultOptions = {
             headers: {
                 'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
                 ...options.headers,
             },
             ...options,
@@ -33,6 +63,76 @@ class ApiService {
             }
         }
     }
+
+    // ============================================
+    // 인증 API
+    // ============================================
+
+    /**
+     * 회원가입
+     * @param {string} email - 이메일
+     * @param {string} password - 비밀번호
+     * @param {string} username - 사용자명
+     */
+    async signup(email, password, username) {
+        return await this.fetchWithRetry(`${this.baseURL}/auth/signup`, {
+            method: 'POST',
+            body: JSON.stringify({ email, password, username })
+        });
+    }
+
+    /**
+     * 로그인
+     * @param {string} email - 이메일
+     * @param {string} password - 비밀번호
+     */
+    async login(email, password) {
+        return await this.fetchWithRetry(`${this.baseURL}/auth/login`, {
+            method: 'POST',
+            body: JSON.stringify({ email, password })
+        });
+    }
+
+    /**
+     * 로그아웃
+     * @param {string} refreshToken - 리프레시 토큰
+     */
+    async logout(refreshToken) {
+        return await this.fetchWithRetry(`${this.baseURL}/auth/logout`, {
+            method: 'POST',
+            body: JSON.stringify({ refreshToken })
+        });
+    }
+
+    /**
+     * 토큰 갱신
+     * @param {string} refreshToken - 리프레시 토큰
+     */
+    async refreshToken(refreshToken) {
+        return await this.fetchWithRetry(`${this.baseURL}/auth/refresh`, {
+            method: 'POST',
+            body: JSON.stringify({ refreshToken })
+        });
+    }
+
+    /**
+     * 현재 사용자 정보 조회
+     */
+    async getCurrentUser() {
+        return await this.fetchWithRetry(`${this.baseURL}/auth/me`);
+    }
+
+    /**
+     * 이메일 중복 확인
+     * @param {string} email - 확인할 이메일
+     */
+    async checkEmail(email) {
+        return await this.fetchWithRetry(`${this.baseURL}/auth/check-email?email=${encodeURIComponent(email)}`);
+    }
+
+    // ============================================
+    // 스타일/콘텐츠 API
+    // ============================================
 
     /**
      * 스타일 목록 조회
@@ -61,6 +161,29 @@ class ApiService {
         const result = await this.fetchWithRetry(`${this.baseURL}/avatar/styles`);
         return result.data || [];
     }
+
+    /**
+     * 인기 창작물 조회
+     */
+    async getPopularCreations(limit = 10) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/creations/popular?limit=${limit}`);
+        return result.data || [];
+    }
+
+    /**
+     * 마켓플레이스 아이템 조회
+     */
+    async getMarketplaceItems(category = null, limit = 20) {
+        const url = category
+            ? `${this.baseURL}/marketplace?category=${category}&limit=${limit}`
+            : `${this.baseURL}/marketplace?limit=${limit}`;
+        const result = await this.fetchWithRetry(url);
+        return result.data || [];
+    }
+
+    // ============================================
+    // 생성 API
+    // ============================================
 
     /**
      * 이모지 생성 시작
@@ -169,6 +292,10 @@ class ApiService {
         });
     }
 
+    // ============================================
+    // 사용자 API
+    // ============================================
+
     /**
      * 사용자 정보 조회
      */
@@ -183,6 +310,16 @@ class ApiService {
     async getUserCreations(userId, limit = 20, offset = 0) {
         const result = await this.fetchWithRetry(
             `${this.baseURL}/users/${userId}/creations?limit=${limit}&offset=${offset}`
+        );
+        return result.data || [];
+    }
+
+    /**
+     * 내 창작물 목록 (인증 필요)
+     */
+    async getMyCreations(limit = 20, offset = 0) {
+        const result = await this.fetchWithRetry(
+            `${this.baseURL}/creations/my?limit=${limit}&offset=${offset}`
         );
         return result.data || [];
     }
