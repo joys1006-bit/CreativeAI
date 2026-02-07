@@ -73,21 +73,34 @@ data class RefreshTokenEntity(
         @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now()
 )
 
+// CreationEntity and CreationFileEntity
+
 /** R2DBC Entity: creations 테이블 */
 @Table("creations")
 data class CreationEntity(
         @Id val id: Long? = null,
         @Column("user_id") val userId: Long,
-        @Column("style_id") val styleId: Long,
         @Column("creation_type") val creationType: String, // emoji, avatar, filter
+        @Column("style_id") val styleId: Long? = null,
         val title: String? = null,
-        val status: String, // pending, processing, completed, failed
-        @Column("input_data") val inputData: String? = null, // JSON
+        val description: String? = null,
         val prompt: String? = null,
-        @Column("error_message") val errorMessage: String? = null,
+        val status: String, // pending, processing, completed, failed
+        val progress: Int = 0,
         @Column("credit_cost") val creditCost: Int = 0,
+
+        // Marketplace Fields
+        val price: java.math.BigDecimal? = null,
+        @Column("is_for_sale") val isForSale: Boolean = false,
+        @Column("like_count") val likeCount: Int = 0,
+        val metadata: String? = null, // JSON 문자열
+        @Column("processing_started_at") val processingStartedAt: LocalDateTime? = null,
+        @Column("processing_completed_at") val processingCompletedAt: LocalDateTime? = null,
         @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now(),
-        @Column("completed_at") val completedAt: LocalDateTime? = null
+        @Column("updated_at") val updatedAt: LocalDateTime = LocalDateTime.now(),
+        @Column("completed_at") val completedAt: LocalDateTime? = null,
+        @Column("error_message") val errorMessage: String? = null,
+        @Column("input_data") val inputData: String? = null
 )
 
 /** R2DBC Entity: creation_files 테이블 */
@@ -95,10 +108,16 @@ data class CreationEntity(
 data class CreationFileEntity(
         @Id val id: Long? = null,
         @Column("creation_id") val creationId: Long,
+        @Column("file_type")
+        val fileType: String, // original_image, result_image, thumbnail, intermediate
+        @Column("variation_index") val variationIndex: Int? = null,
+        @Column("file_path") val filePath: String,
         @Column("file_url") val fileUrl: String,
         @Column("thumbnail_url") val thumbnailUrl: String? = null,
-        @Column("file_type") val fileType: String = "image/png",
-        @Column("file_size") val fileSize: Long = 0,
+        @Column("file_size") val fileSize: Long? = null,
+        @Column("mime_type") val mimeType: String? = null,
+        val width: Int? = null,
+        val height: Int? = null,
         @Column("is_primary") val isPrimary: Boolean = false,
         @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now()
 )

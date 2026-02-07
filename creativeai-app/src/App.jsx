@@ -14,6 +14,7 @@ import AvatarMaker from './pages/AvatarMaker'
 import PhotoEditor from './pages/PhotoEditor'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import LoginCallback from './pages/LoginCallback'
 
 /**
  * ============================================
@@ -49,7 +50,7 @@ function App() {
                     }
                 />
 
-                {/* 인증 페이지 */}
+                {/* 인증 페이지 (이미 로그인한 경우 홈으로 리다이렉트) */}
                 <Route
                     path="/login"
                     element={
@@ -67,8 +68,14 @@ function App() {
                     }
                 />
 
+                {/* OAuth 콜백 */}
+                <Route path="/login/callback" element={<LoginCallback />} />
+
                 {/* 메인 페이지 (인증 없이 접근 가능) */}
                 <Route path="/home" element={<Home />} />
+
+                {/* 갤러리 (준비 중) */}
+                <Route path="/gallery" element={<div className="p-8">Gallery Page (Coming Soon)</div>} />
 
                 {/* 보호된 페이지 (인증 필요) */}
                 <Route path="/emoji-maker" element={

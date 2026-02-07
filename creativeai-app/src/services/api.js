@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = 'http://localhost:9090/api';
 
 /**
  * ============================================
@@ -47,12 +47,20 @@ class ApiService {
             ...options,
         };
 
+        // 디버그 로그
+        console.log('[API] Request URL:', url);
+        console.log('[API] Method:', options.method || 'GET');
+        console.log('[API] Token:', token ? 'Present' : 'None');
+
         for (let i = 0; i < retries; i++) {
             try {
                 const response = await fetch(url, defaultOptions);
 
+                console.log('[API] Response Status:', response.status);
+
                 if (!response.ok) {
                     const error = await response.json().catch(() => ({ message: response.statusText }));
+                    console.error('[API] Error:', error);
                     throw new Error(error.message || `HTTP ${response.status}`);
                 }
 

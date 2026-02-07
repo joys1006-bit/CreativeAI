@@ -68,8 +68,8 @@ function Login() {
      * Google OAuth 로그인 처리
      */
     const handleGoogleLogin = () => {
-        // Google OAuth 엔드포인트로 리다이렉트
-        window.location.href = `${import.meta.env.VITE_API_URL}/oauth2/authorization/google`;
+        // 백엔드 OAuth2 Authorization Endpoint (표준 경로)
+        window.location.href = 'http://localhost:9090/oauth2/authorization/google';
     };
 
     return (

@@ -104,7 +104,8 @@ function Signup() {
      * Google OAuth 가입 처리
      */
     const handleGoogleSignup = () => {
-        window.location.href = `${import.meta.env.VITE_API_URL}/oauth2/authorization/google`;
+        // 백엔드 OAuth2 Authorization Endpoint (표준 경로)
+        window.location.href = 'http://localhost:9090/oauth2/authorization/google';
     };
 
     return (

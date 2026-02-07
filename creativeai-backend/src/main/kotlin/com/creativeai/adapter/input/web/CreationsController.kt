@@ -24,12 +24,11 @@ class CreationsController {
                                         id = entity.id ?: 0L,
                                         type = entity.creationType,
                                         title = entity.title ?: "제목 없음",
-                                        // 메타데이터나 파일 테이블을 조회해서 실제 값을 채워야 하지만,
-                                        // 현재 단계에서는 간단히 매핑
+                                        // Use seeded random image to look consistent
                                         imageUrl =
-                                                "https://via.placeholder.com/150?text=${entity.creationType}",
+                                                "https://picsum.photos/seed/${entity.id}/300/300",
                                         creator = "User-${entity.userId}",
-                                        likes = (0..1000).random() // 임시 랜덤 값
+                                        likes = entity.likeCount
                                 )
                         }
                         .collectList()
