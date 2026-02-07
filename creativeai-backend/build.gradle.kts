@@ -14,10 +14,10 @@ java { sourceCompatibility = JavaVersion.VERSION_17 }
 repositories { mavenCentral() }
 
 dependencies {
-    // Spring WebFlux (ºñµ¿±â/³íºí·ÎÅ·)
+    // Spring WebFlux (ï¿½ñµ¿±ï¿½/ï¿½ï¿½ï¿½ï¿½Å·)
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
-    // Kotlin Coroutines (¸®¾×Æ¼ºê Áö¿ø)
+    // Kotlin Coroutines (ï¿½ï¿½ï¿½ï¿½Æ¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
     // R2DBC & MySQL
@@ -36,6 +36,28 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
     testImplementation("io.mockk:mockk:1.13.8")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
+}
+
+tasks.withType<Test> { useJUnitPlatform() }
+
+kotlin { jvmToolchain(17) }
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+
+    // Jackson (JSON)
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+
+    // Kotlin Reflect
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+    // Test
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("io.projectreactor:reactor-test")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    
+    // Security Test (ì¸ì¦ í…ŒìŠ¤íŠ¸ìš©)
+    testImplementation("org.springframework.security:spring-security-test")
 }
 
 tasks.withType<Test> { useJUnitPlatform() }
