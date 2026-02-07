@@ -19,14 +19,57 @@ data class StyleEntity(
         @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now()
 )
 
-/** R2DBC Entity: users 테이블 */
+/**
+ * ============================================ R2DBC Entity: users 테이블
+ * ============================================ 사용자 정보 저장 (일반 가입 + OAuth 가입)
+ */
 @Table("users")
 data class UserEntity(
         @Id val id: Long? = null,
-        val username: String,
-        val email: String,
-        @Column("password_hash") val passwordHash: String? = null,
-        val credits: Int = 100,
+        val username: String, // 표시 이름
+        val email: String, // 이메일 (로그인 ID)
+        @Column("password_hash") val passwordHash: String? = null, // 비밀번호 (OAuth는 null)
+        @Column("avatar_url") val avatarUrl: String? = null, // 프로필 이미지
+        @Column("total_credits") val totalCredits: Int = 100, // 보유 크레딧
+        @Column("email_verified") val emailVerified: Boolean = false, // 이메일 인증 여부
+        val status: String = "active", // 계정 상태
+        @Column("auth_provider") val authProvider: String = "local", // 인증 제공자
+        @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now(),
+        @Column("updated_at") val updatedAt: LocalDateTime = LocalDateTime.now(),
+        @Column("last_login") val lastLogin: LocalDateTime? = null // 마지막 로그인
+)
+
+/**
+ * ============================================ R2DBC Entity: user_oauth_accounts 테이블
+ * ============================================ OAuth 소셜 로그인 계정 정보
+ */
+@Table("user_oauth_accounts")
+data class UserOAuthAccountEntity(
+        @Id val id: Long? = null,
+        @Column("user_id") val userId: Long, // 연결된 사용자 ID
+        val provider: String, // OAuth 제공자 (google, apple 등)
+        @Column("provider_user_id") val providerUserId: String, // OAuth측 사용자 ID
+        val email: String? = null, // OAuth에서 받은 이메일
+        val name: String? = null, // OAuth에서 받은 이름
+        @Column("avatar_url") val avatarUrl: String? = null, // OAuth에서 받은 프로필 이미지
+        @Column("raw_data") val rawData: String? = null, // OAuth 응답 원본 (JSON)
+        @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now(),
+        @Column("updated_at") val updatedAt: LocalDateTime = LocalDateTime.now()
+)
+
+/**
+ * ============================================ R2DBC Entity: refresh_tokens 테이블
+ * ============================================ JWT Refresh Token 저장소
+ */
+@Table("refresh_tokens")
+data class RefreshTokenEntity(
+        @Id val id: Long? = null,
+        @Column("user_id") val userId: Long, // 토큰 소유자 ID
+        @Column("token_hash") val tokenHash: String, // 토큰 해시 (SHA-256)
+        @Column("device_info") val deviceInfo: String? = null, // 기기 정보
+        @Column("ip_address") val ipAddress: String? = null, // 접속 IP
+        @Column("expires_at") val expiresAt: LocalDateTime, // 만료 일시
+        @Column("is_revoked") val isRevoked: Boolean = false, // 무효화 여부
         @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now()
 )
 
@@ -36,12 +79,13 @@ data class CreationEntity(
         @Id val id: Long? = null,
         @Column("user_id") val userId: Long,
         @Column("style_id") val styleId: Long,
-        val type: String, // emoji, avatar, filter
+        @Column("creation_type") val creationType: String, // emoji, avatar, filter
+        val title: String? = null,
         val status: String, // pending, processing, completed, failed
         @Column("input_data") val inputData: String? = null, // JSON
         val prompt: String? = null,
         @Column("error_message") val errorMessage: String? = null,
-        @Column("credits_used") val creditsUsed: Int = 0,
+        @Column("credit_cost") val creditCost: Int = 0,
         @Column("created_at") val createdAt: LocalDateTime = LocalDateTime.now(),
         @Column("completed_at") val completedAt: LocalDateTime? = null
 )
