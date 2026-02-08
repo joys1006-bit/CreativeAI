@@ -23,6 +23,7 @@ Thumbs.db
 # Backend
 creativeai-backend/.gradle/
 creativeai-backend/build/
+creativeai-backend/bin/
 creativeai-backend/out/
 creativeai-backend/*.jar
 creativeai-backend/*.war
