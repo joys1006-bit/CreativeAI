@@ -1,5 +1,6 @@
 package com.creativeai.adapter.input.web
 
+import com.creativeai.adapter.output.persistence.CreationFileR2dbcRepository
 import com.creativeai.application.service.PhotoEditorService
 import com.creativeai.common.response.ApiResponse
 import org.springframework.beans.factory.annotation.Autowired
@@ -9,9 +10,9 @@ import reactor.core.publisher.Mono
 /** 사진 편집 컨트롤러 */
 @RestController
 @RequestMapping("/api/photo-editor")
-@CrossOrigin(origins = ["http://localhost:3000"])
 class PhotoEditorController {
         @Autowired lateinit var photoEditorService: PhotoEditorService
+        @Autowired lateinit var creationFileRepository: CreationFileR2dbcRepository
 
         @PostMapping("/edit")
         fun editPhoto(@RequestBody request: PhotoEditRequest): Mono<ApiResponse<PhotoEditResult>> {
@@ -21,18 +22,24 @@ class PhotoEditorController {
                                 request.operation,
                                 request.params ?: emptyMap()
                         )
-                        .map { creation ->
-                                ApiResponse(
-                                        success = true,
-                                        data =
-                                                PhotoEditResult(
-                                                        id = creation.id ?: 0L,
-                                                        status = creation.status,
-                                                        resultImageUrl =
-                                                                "https://via.placeholder.com/300?text=Edited+Photo" // 임시 결과 이미지
-                                                ),
-                                        message = "사진 편집 완료"
-                                )
+                        .flatMap { creation ->
+                                creationFileRepository
+                                        .findByCreationId(creation.id!!)
+                                        .filter { it.fileType == "result_image" }
+                                        .next()
+                                        .map { file ->
+                                                ApiResponse(
+                                                        success = true,
+                                                        data =
+                                                                PhotoEditResult(
+                                                                        id = creation.id!!,
+                                                                        status = creation.status,
+                                                                        resultImageUrl =
+                                                                                file.fileUrl
+                                                                ),
+                                                        message = "사진 편집 완료"
+                                                )
+                                        }
                         }
                         .onErrorResume { error ->
                                 Mono.just(
@@ -48,9 +55,9 @@ class PhotoEditorController {
 
 // DTOs
 data class PhotoEditRequest(
-        val imageData: String,
-        val operation: String, // crop, filter, adjust
-        val params: Map<String, Any>?
+        val imageData: String? = null,
+        val operation: String? = null,
+        val params: Map<String, Any>? = null
 )
 
 data class PhotoEditResult(val id: Long, val status: String, val resultImageUrl: String)

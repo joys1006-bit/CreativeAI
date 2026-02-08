@@ -89,6 +89,8 @@ class SecurityConfig(
                             .permitAll()
                             .pathMatchers("/actuator/**")
                             .permitAll()
+                            .pathMatchers("/api/debug")
+                            .permitAll()
 
                             // 스타일 목록 조회 (읽기 전용)
                             .pathMatchers(HttpMethod.GET, "/api/emoji/styles")
@@ -96,10 +98,12 @@ class SecurityConfig(
                             .pathMatchers(HttpMethod.GET, "/api/avatar/styles")
                             .permitAll()
 
-                            // 인기 창작물, 마켓플레이스 (읽기 전용)
+                            // 인기 창작물, 마켓플레이스, AI 도구 (읽기 및 편집 가능)
                             .pathMatchers(HttpMethod.GET, "/api/creations/popular")
                             .permitAll()
                             .pathMatchers(HttpMethod.GET, "/api/marketplace/**")
+                            .permitAll()
+                            .pathMatchers("/api/photo-editor/**")
                             .permitAll()
 
                             // ===== 인증 필요 경로 =====

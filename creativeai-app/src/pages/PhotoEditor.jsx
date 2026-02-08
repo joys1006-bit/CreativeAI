@@ -6,7 +6,9 @@ import './PhotoEditor.css'
 function PhotoEditor() {
     const navigate = useNavigate()
     const [uploadedImage, setUploadedImage] = useState(null)
+    const [originalImage, setOriginalImage] = useState(null)
     const [tool, setTool] = useState('filter')
+    const [isProcessing, setIsProcessing] = useState(false)
     const [filters, setFilters] = useState({
         brightness: 100,
         contrast: 100,
@@ -21,8 +23,21 @@ function PhotoEditor() {
             const reader = new FileReader()
             reader.onload = (event) => {
                 setUploadedImage(event.target.result)
+                setOriginalImage(event.target.result)
             }
             reader.readAsDataURL(file)
+        }
+    }
+
+    const handleReset = () => {
+        if (window.confirm('모든 편집 내용을 취소하고 원본으로 되돌릴까요?')) {
+            setUploadedImage(originalImage)
+            setFilters({
+                brightness: 100,
+                contrast: 100,
+                saturation: 100,
+                blur: 0,
+            })
         }
     }
 
@@ -62,8 +77,58 @@ function PhotoEditor() {
         }
     }
 
-    const handleRemoveBackground = () => {
-        alert('배경 제거 기능은 곧 출시됩니다!')
+    const [selectedStyle, setSelectedStyle] = useState('digital-art')
+    const [showStylePanel, setShowStylePanel] = useState(false)
+
+    const handleAiEdit = async (operation, style = null) => {
+        if (!uploadedImage) {
+            alert('먼저 사진을 업로드해주세요.')
+            return
+        }
+
+        if (operation === 'style_transfer' && !style && !showStylePanel) {
+            setShowStylePanel(true)
+            return
+        }
+
+        setIsProcessing(true)
+        try {
+            const params = style ? { style } : {}
+            const result = await apiService.editPhoto(uploadedImage, operation, params)
+            if (result.success && result.data.resultImageUrl) {
+                setUploadedImage(result.data.resultImageUrl)
+                setShowStylePanel(false)
+            }
+        } catch (error) {
+            console.error('AI Edit failed:', error)
+        } finally {
+            setIsProcessing(false)
+        }
+    }
+
+    const aiStyles = [
+        { id: 'anime', name: '애니메이션', icon: '🎎' },
+        { id: '3d-model', name: '3D 모델', icon: '🧊' },
+        { id: 'cinematic', name: '시네마틱', icon: '🎬' },
+        { id: 'comic-book', name: '만화책', icon: '📖' },
+        { id: 'pixel-art', name: '픽셀 아트', icon: '👾' },
+        { id: 'digital-art', name: '디지털 아트', icon: '💻' }
+    ]
+
+    const handlePresetClick = (preset) => {
+        switch (preset) {
+            case 'vintage':
+                setFilters({ brightness: 90, contrast: 110, saturation: 70, blur: 0 })
+                break
+            case 'bw':
+                setFilters({ brightness: 100, contrast: 120, saturation: 0, blur: 0 })
+                break
+            case 'sepia':
+                setFilters({ brightness: 100, contrast: 95, saturation: 40, blur: 0 })
+                break
+            default:
+                setFilters({ brightness: 100, contrast: 100, saturation: 100, blur: 0 })
+        }
     }
 
     return (
@@ -77,12 +142,24 @@ function PhotoEditor() {
             <main className="content">
                 <div className="editor-canvas">
                     {uploadedImage ? (
-                        <img
-                            src={uploadedImage}
-                            alt="Editing"
-                            style={getFilterStyle()}
-                            className="editing-image"
-                        />
+                        <div className="editing-image-wrapper">
+                            <img
+                                src={uploadedImage}
+                                alt="Editing"
+                                style={getFilterStyle()}
+                                className="editing-image"
+                            />
+                            <div className="canvas-actions">
+                                <button className="action-circle-btn" onClick={handleReset} title="원본으로 되돌리기">🔄</button>
+                                <button className="action-circle-btn" onClick={() => fileInputRef.current?.click()} title="사진 교체">📷</button>
+                            </div>
+                            {isProcessing && (
+                                <div className="processing-overlay">
+                                    <div className="spinner"></div>
+                                    <p>AI가 스타일을 입히는 중...</p>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <div className="upload-placeholder" onClick={() => fileInputRef.current?.click()}>
                             <div className="placeholder-icon">🖼️</div>
@@ -102,13 +179,13 @@ function PhotoEditor() {
                 <div className="tool-tabs">
                     <button
                         className={`tool-tab ${tool === 'filter' ? 'active' : ''}`}
-                        onClick={() => setTool('filter')}
+                        onClick={() => { setTool('filter'); setShowStylePanel(false); }}
                     >
                         필터
                     </button>
                     <button
                         className={`tool-tab ${tool === 'adjust' ? 'active' : ''}`}
-                        onClick={() => setTool('adjust')}
+                        onClick={() => { setTool('adjust'); setShowStylePanel(false); }}
                     >
                         조정
                     </button>
@@ -122,19 +199,19 @@ function PhotoEditor() {
 
                 {tool === 'filter' && (
                     <div className="filter-presets">
-                        <div className="preset-item">
+                        <div className="preset-item" onClick={() => handlePresetClick('original')}>
                             <div className="preset-preview">🌅</div>
                             <div className="preset-name">원본</div>
                         </div>
-                        <div className="preset-item">
+                        <div className="preset-item" onClick={() => handlePresetClick('vintage')}>
                             <div className="preset-preview">🌆</div>
                             <div className="preset-name">빈티지</div>
                         </div>
-                        <div className="preset-item">
+                        <div className="preset-item" onClick={() => handlePresetClick('bw')}>
                             <div className="preset-preview">🌃</div>
                             <div className="preset-name">흑백</div>
                         </div>
-                        <div className="preset-item">
+                        <div className="preset-item" onClick={() => handlePresetClick('sepia')}>
                             <div className="preset-preview">🌇</div>
                             <div className="preset-name">세피아</div>
                         </div>
@@ -191,23 +268,36 @@ function PhotoEditor() {
                 )}
 
                 {tool === 'ai' && (
-                    <div className="ai-tools">
-                        <button className="ai-tool-btn" onClick={handleRemoveBackground}>
-                            <span className="tool-icon">✂️</span>
-                            <span className="tool-name">배경 제거</span>
-                        </button>
-                        <button className="ai-tool-btn" onClick={() => alert('곧 출시됩니다!')}>
-                            <span className="tool-icon">✨</span>
-                            <span className="tool-name">화질 개선</span>
-                        </button>
-                        <button className="ai-tool-btn" onClick={() => alert('곧 출시됩니다!')}>
-                            <span className="tool-icon">🎨</span>
-                            <span className="tool-name">스타일 변환</span>
-                        </button>
-                        <button className="ai-tool-btn" onClick={() => alert('곧 출시됩니다!')}>
-                            <span className="tool-icon">🔍</span>
-                            <span className="tool-name">확대</span>
-                        </button>
+                    <div className="ai-container">
+                        <div className="ai-tools">
+                            <button className="ai-tool-btn" onClick={() => handleAiEdit('remove_bg')}>
+                                <span className="tool-icon">✂️</span>
+                                <span className="tool-name">배경 제거</span>
+                            </button>
+                            <button className={`ai-tool-btn ${showStylePanel ? 'active' : ''}`} onClick={() => handleAiEdit('style_transfer')}>
+                                <span className="tool-icon">🎨</span>
+                                <span className="tool-name">스타일 변환</span>
+                            </button>
+                        </div>
+
+                        {showStylePanel && (
+                            <div className="style-selection-panel slide-up">
+                                <h3>변환할 스타일 선택</h3>
+                                <div className="style-grid">
+                                    {aiStyles.map(s => (
+                                        <button
+                                            key={s.id}
+                                            className="style-item"
+                                            onClick={() => handleAiEdit('style_transfer', s.id)}
+                                        >
+                                            <span className="style-icon">{s.icon}</span>
+                                            <span className="style-name">{s.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <button className="close-panel" onClick={() => setShowStylePanel(false)}>닫기</button>
+                            </div>
+                        )}
                     </div>
                 )}
             </main>

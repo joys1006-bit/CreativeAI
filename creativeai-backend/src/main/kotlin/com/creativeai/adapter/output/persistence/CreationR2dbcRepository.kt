@@ -8,4 +8,5 @@ import reactor.core.publisher.Flux
 interface CreationR2dbcRepository : ReactiveCrudRepository<CreationEntity, Long> {
     fun findByUserId(userId: Long): Flux<CreationEntity>
     fun findByStatus(status: String): Flux<CreationEntity>
+    fun findByIsForSaleTrue(): Flux<CreationEntity>
 }

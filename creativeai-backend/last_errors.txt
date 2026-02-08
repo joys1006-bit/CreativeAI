@@ -1,0 +1,75 @@
+﻿
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+RemoveBgClient.kt:19:3
+4 Expecting '}'
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+RemoveBgClient.kt:19:3
+5 Expecting an express
+ion
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+RemoveBgClient.kt:19:1
+5 Unresolved reference
+: ai
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+RemoveBgClient.kt:19:3
+1 Unresolved reference
+: key
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+StabilityAiClient.kt:1
+9:35 Expecting '}'
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+StabilityAiClient.kt:1
+9:36 Expecting an expr
+ession
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+StabilityAiClient.kt:1
+9:15 Unresolved refere
+nce: ai
+e: file:///C:/Users/FO
+RYOUCOM/.gemini/antigr
+avity/scratch/creative
+ai-backend/src/main/ko
+tlin/com/creativeai/ad
+apter/output/external/
+StabilityAiClient.kt:1
+9:32 Unresolved refere
+nce: key
+FAILURE: Build failed 
+with an exception.
+
+

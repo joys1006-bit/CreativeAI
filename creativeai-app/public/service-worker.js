@@ -1,5 +1,5 @@
 // Service Worker for CreativeAI PWA
-const CACHE_NAME = 'creativeai-v1'
+const CACHE_NAME = 'creativeai-v2'
 const urlsToCache = [
     '/',
     '/index.html',
@@ -23,6 +23,11 @@ self.addEventListener('install', (event) => {
 
 // Fetch 이벤트 - 네트워크 우선, 캐시 폴백
 self.addEventListener('fetch', (event) => {
+    // POST 등 비-GET 요청은 캐시하지 않음 (오류 방지)
+    if (event.request.method !== 'GET') {
+        return event.respondWith(fetch(event.request));
+    }
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {

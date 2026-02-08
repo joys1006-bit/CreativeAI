@@ -1,0 +1,35 @@
+server.port=9090
+spring.application.name=creativeai-backend
+
+# ============================================
+# R2DBC MySQL 설정
+# ============================================
+spring.r2dbc.url=r2dbc:mysql://${DB_HOST:localhost}:3306/creativeai_db
+spring.r2dbc.username=${DB_USERNAME:creativeai_user}
+spring.r2dbc.password=${DB_PASSWORD:creativeai_pass_2024}
+spring.r2dbc.pool.initial-size=10
+spring.r2dbc.pool.max-size=20
+
+# ============================================
+# JWT 설정
+# ============================================
+jwt.secret=${JWT_SECRET:creativeai-super-secret-key-for-jwt-token-2024-minimum-256-bits-required-for-security}
+jwt.access-token-expiry=900000
+jwt.refresh-token-expiry=604800000
+
+# ============================================
+# Google OAuth2 설정
+# ============================================
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID:your-google-client-id}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+spring.security.oauth2.client.registration.google.scope=openid,email,profile
+spring.security.oauth2.client.registration.google.redirect-uri={baseUrl}/login/oauth2/code/google
+
+# ============================================
+# 외부 AI 서비스 API 키 설정
+# ============================================
+# Stability AI: https://platform.stability.ai/
+ai.stability.api-key=${STABILITY_API_KEY}
+
+# Remove.bg: https://www.remove.bg/api
+ai.removebg.api-key=${REMOVEBG_API_KEY}

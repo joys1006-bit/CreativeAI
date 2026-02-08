@@ -238,7 +238,7 @@ class ApiService {
                 params
             })
         });
-        return result.data;
+        return result;
     }
 
     /**
@@ -253,7 +253,7 @@ class ApiService {
                 intensity
             })
         });
-        return result.data;
+        return result;
     }
 
     /**
@@ -309,6 +309,19 @@ class ApiService {
      */
     async getUser(userId) {
         const result = await this.fetchWithRetry(`${this.baseURL}/users/${userId}`);
+        return result.data;
+    }
+
+    /**
+     * 내 프로필 수정
+     * @param {string} username - 새 사용자명 (옵션)
+     * @param {string} avatarUrl - 새 프로필 이미지 URL (옵션)
+     */
+    async updateCurrentUser(username, avatarUrl) {
+        const result = await this.fetchWithRetry(`${this.baseURL}/users/me`, {
+            method: 'PUT',
+            body: JSON.stringify({ username, avatarUrl })
+        });
         return result.data;
     }
 

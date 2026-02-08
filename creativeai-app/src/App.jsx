@@ -15,6 +15,8 @@ import PhotoEditor from './pages/PhotoEditor'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import LoginCallback from './pages/LoginCallback'
+import MyPage from './pages/MyPage'
+import Marketplace from './pages/Marketplace'
 
 /**
  * ============================================
@@ -74,8 +76,8 @@ function App() {
                 {/* 메인 페이지 (인증 없이 접근 가능) */}
                 <Route path="/home" element={<Home />} />
 
-                {/* 갤러리 (준비 중) */}
-                <Route path="/gallery" element={<div className="p-8">Gallery Page (Coming Soon)</div>} />
+                {/* 마켓플레이스 (전문 디자인 적용) */}
+                <Route path="/marketplace" element={<Marketplace />} />
 
                 {/* 보호된 페이지 (인증 필요) */}
                 <Route path="/emoji-maker" element={
@@ -95,6 +97,9 @@ function App() {
                 } />
                 <Route path="/photo-editor" element={
                     <PrivateRoute><PhotoEditor /></PrivateRoute>
+                } />
+                <Route path="/mypage" element={
+                    <PrivateRoute><MyPage /></PrivateRoute>
                 } />
             </Routes>
         </BrowserRouter>
