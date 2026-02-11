@@ -26,70 +26,83 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-const jobs = new Map();
+const jobs = {}; // Use plain object for easier JSON serialization
 
-app.get('/', (req, res) => res.send('AI Captioner Node Backend is running'));
+app.get('/', (req, res) => res.send('AI Captioner Pro Backend - Operational 🚀'));
 
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded');
 
     const jobId = uuidv4();
     const videoPath = req.file.path;
     const audioPath = path.join(UPLOAD_DIR, `${jobId}.wav`);
+    const targetLanguage = req.body.language || 'ko';
 
     const job = {
         jobId,
-        filename: req.file.originalname,
-        status: 'PROCESSING',
-        segments: []
+        fileName: req.file.originalname,
+        status: 'PENDING',
+        segments: [],
+        summary: '',
+        keywords: [],
+        sentiment: '',
+        waveform: []
     };
-    jobs.set(jobId, job);
+    jobs[jobId] = job;
 
-    // 비동기 처리 착수
-    processTranscription(jobId, videoPath, audioPath);
+    // Background process orchestration
+    console.log(`[Server] Job ${jobId} initiated (Lang: ${targetLanguage})`);
 
-    res.json(job);
+    extractAudio(videoPath, audioPath)
+        .then(() => processTranscription(jobId, videoPath, audioPath, targetLanguage))
+        .catch(err => {
+            console.error(`[Job ${jobId}] Extraction error:`, err);
+            job.status = 'FAILED';
+            job.error = "오디오 추출 실패";
+        });
+
+    res.json({ jobId });
 });
 
-async function processTranscription(jobId, videoPath, audioPath) {
-    const job = jobs.get(jobId);
-    try {
-        // 1. 오디오 추출
-        console.log(`[${jobId}] Step 1: Extracting Audio...`);
-        await extractAudio(videoPath, audioPath);
+async function processTranscription(jobId, videoPath, audioPath, targetLanguage) {
+    const job = jobs[jobId];
+    if (!job) return;
 
-        // 2. Parallel Processing: Gemini AI & Waveform Generation
-        console.log(`[${jobId}] Step 2: Running AI & Waveform Analysis...`);
+    try {
+        job.status = 'PROCESSING';
+        console.log(`[Job ${jobId}] Step 2: Running AI Analysis (${targetLanguage})...`);
 
         const [geminiResult, waveformData] = await Promise.all([
-            transcribeWithGemini(audioPath),
-            generateWaveform(audioPath, 20) // 20 samples/sec for UI (approx 1 sample every 50ms)
+            transcribeWithGemini(audioPath, targetLanguage),
+            generateWaveform(audioPath, 20)
         ]);
 
         job.segments = geminiResult.segments;
         job.summary = geminiResult.summary;
         job.keywords = geminiResult.keywords;
+        job.sentiment = geminiResult.sentiment;
         job.waveform = waveformData;
-
         job.status = 'COMPLETED';
-        console.log(`[${jobId}] Transcription & Analysis Completed!`);
+
+        console.log(`[Job ${jobId}] Success: Analysis completed.`);
     } catch (error) {
-        console.error(`[${jobId}] Error:`, error);
+        console.error(`[Job ${jobId}] AI/Waveform Error:`, error);
         job.status = 'FAILED';
+        job.error = error.message;
     }
 }
 
 app.get('/status/:jobId', (req, res) => {
-    const job = jobs.get(req.params.jobId);
+    const job = jobs[req.params.jobId];
     if (!job) return res.status(404).send('Job not found');
     res.json(job);
 });
 
 const server = app.listen(port, () => {
-    console.log(`[AI Captioner] Backend listening at http://localhost:${port}`);
+    console.log(`[AI Captioner Pro] Backend listening at http://localhost:${port}`);
 }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-        console.error(`[CRITICAL] Port ${port} is already in use. Please kill the other process or change the port.`);
+        console.error(`[CRITICAL] Port ${port} is already in use.`);
     } else {
         console.error('[CRITICAL] Server error:', err);
     }

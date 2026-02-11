@@ -4,20 +4,27 @@ const fs = require('fs');
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 /**
- * Gemini 1.5 Pro를 사용하여 오디오 파일로부터 자막을 생성합니다.
- * 재시도 로직 및 정교한 프롬프트를 포함합니다.
+ * Gemini 1.5 Pro/Flash를 사용하여 오디오 파일로부터 자막을 생성합니다.
+ * 감성 분석 및 다국어 지원이 추가되었습니다.
  */
-async function transcribeWithGemini(audioPath, retryCount = 0) {
+async function transcribeWithGemini(audioPath, targetLanguage = 'ko', retryCount = 0) {
     const MAX_RETRIES = 3;
-    const INITIAL_RETRY_DELAY = 2000; // 2초
+    const INITIAL_RETRY_DELAY = 2000;
 
-    console.log(`[Gemini] Attempt ${retryCount + 1}: Using API Key:`, process.env.GOOGLE_API_KEY ? "EXISTS" : "MISSING");
+    const languageMap = {
+        'ko': 'KOREAN (한국어)',
+        'en': 'ENGLISH (영어)',
+        'ja': 'JAPANESE (일본어)',
+        'zh': 'CHINESE (중국어)'
+    };
+
+    const targetLangFull = languageMap[targetLanguage] || 'KOREAN (한국어)';
 
     const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
         systemInstruction: {
             role: "system",
-            parts: [{ text: "당신은 전문 한국어 자막가입니다. 당신은 오직 한국어로만 말하고 작성합니다. 오디오에서 외국어가 들리더라도 이를 한국어로 해석하여 전사하거나 즉시 한국어로 번역해야 합니다. 모든 출력은 반드시 유효한 JSON 형식이어야 합니다. 요약과 키워드 또한 한국어로 작성하십시오." }]
+            parts: [{ text: `당신은 세계 최고의 멀티미디어 AI 전문가입니다. 오디오를 분석하여 정확한 자막, 요약, 핵심 키워드, 그리고 화자의 감성(Sentiment)을 추출합니다. 모든 출력은 ${targetLangFull}로 작성하며, 반드시 유효한 JSON 형식이어야 합니다.` }]
         }
     });
 
@@ -26,31 +33,24 @@ async function transcribeWithGemini(audioPath, retryCount = 0) {
         const audioBase64 = audioData.toString('base64');
 
         const prompt = `
-        이 오디오를 분석하여 JSON 객체로 출력하세요.
+        이 오디오를 분석하여 다음 구조의 JSON 객체로 출력하세요.
         
-        대상 언어: KOREAN (한국어)
-        입력 오디오: 한국어 중심 (외국어일 경우 한국어로 번역)
-        
-        핵심 지침: **축자 전사 (받아쓰기)**
-        - 화자가 말한 모든 단어를 하나도 빠짐없이 전사하세요.
-        - "segments" 필드에서 가급적 내용을 요약하지 마십시오.
-        - 문장의 흐름상 필요한 추임새나 작은 단어도 생략하지 마십시오.
-        - 내용이 길다면 필요한 만큼 많은 세그먼트를 생성하세요.
+        대상 언어: ${targetLangFull}
         
         요구사항:
-        1. **Segments**: 전체 대사. 가독성을 위해 세그먼트당 최대 3-5초.
-        2. **Timestamps**: 정밀한 시작/종료 시간 (0.01초 단위).
-        3. **Summary**: 전체 내용에 대한 명확하고 상세한 한국어 요약.
-        4. **Keywords**: 핵심 키워드 3-5개 (한국어).
+        1. **segments**: 3-5초 단위의 정밀한 자막 세그먼트 (start, end, text). 텍스트는 축자 전사를 원칙으로 하되 대상 언어로 자연스럽게 번역/교정하세요.
+        2. **summary**: 전체 오디오의 핵심 내용을 관통하는 2-3문장의 상세 요약.
+        3. **keywords**: 오디오의 주제를 나타내는 핵심 태그 5개.
+        4. **sentiment**: 화자의 목소리 톤과 내용을 바탕으로 한 감성 분석 결과 (예: "긍정적이고 열정적인 톤", "차분하고 분석적인 설명" 등).
         
         JSON 구조:
         {
             "segments": [
-                { "start": 0.0, "end": 2.5, "text": "안녕하세요, 오늘 우리는 AI에 대해 이야기해 볼 겁니다." },
-                { "start": 2.5, "end": 5.1, "text": "지금 보시는 화면은 실제 작동하는 예시입니다." }
+                { "start": 0.0, "end": 2.5, "text": "..." }
             ],
-            "summary": "전체 내용을 요약한 한국어 텍스트",
-            "keywords": ["AI", "자막", "자동화"]
+            "summary": "...",
+            "keywords": ["...", "..."],
+            "sentiment": "..."
         }
         `;
 
@@ -66,33 +66,35 @@ async function transcribeWithGemini(audioPath, retryCount = 0) {
 
         const response = await result.response;
         let text = response.text();
-        console.log("Gemini Raw Response:", text);
 
-        // Robust JSON extraction
         const jsonStartIndex = text.indexOf('{');
         const jsonEndIndex = text.lastIndexOf('}');
-
         if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
             text = text.substring(jsonStartIndex, jsonEndIndex + 1);
         }
 
         const data = JSON.parse(text);
-        if (Array.isArray(data)) {
-            return { segments: data, summary: "요약 정보가 없습니다.", keywords: [] };
-        }
-        return data;
+        return {
+            segments: data.segments || [],
+            summary: data.summary || "요약 불가",
+            keywords: data.keywords || [],
+            sentiment: data.sentiment || "분석 완료"
+        };
 
     } catch (e) {
-        // 503 (Service Unavailable) 또는 429 (Too Many Requests) 처리
         if ((e.status === 503 || e.status === 429) && retryCount < MAX_RETRIES) {
             const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
-            console.warn(`[Gemini] Error ${e.status}. Retrying in ${delay}ms... (Retry ${retryCount + 1}/${MAX_RETRIES})`);
             await new Promise(resolve => setTimeout(resolve, delay));
-            return transcribeWithGemini(audioPath, retryCount + 1);
+            return transcribeWithGemini(audioPath, targetLanguage, retryCount + 1);
         }
 
         console.error("Failed Gemini process:", e);
-        return { segments: [], summary: `오류 발생: ${e.message}`, keywords: [] };
+        return {
+            segments: [],
+            summary: `오류 발생: ${e.message}`,
+            keywords: [],
+            sentiment: "분석 실패"
+        };
     }
 }
 

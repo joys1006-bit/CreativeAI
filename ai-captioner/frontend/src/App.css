@@ -1,0 +1,356 @@
+/* premium AI Captioner Pro Design System */
+:root {
+    --bg-dark: #0a0a0c;
+    --bg-glass: rgba(25, 25, 30, 0.7);
+    --bg-panel: #141418;
+    --primary: #8a2be2;
+    --secondary: #4b0082;
+    --accent: #00f2ff;
+    --text-main: #f8f9fa;
+    --text-muted: #94a3b8;
+    --border-glass: rgba(255, 255, 255, 0.1);
+    --glow: 0 0 20px rgba(138, 43, 226, 0.3);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    background-image:
+        radial-gradient(circle at 0% 0%, rgba(138, 43, 226, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 100% 100%, rgba(0, 242, 255, 0.05) 0%, transparent 40%);
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: transparent;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+/* Header - Sleek Glassmorphism */
+.app-header {
+    height: 70px;
+    flex-shrink: 0;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border-glass);
+    z-index: 100;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.2));
+}
+
+.header-actions {
+    display: flex;
+    gap: 16px;
+}
+
+/* Main Split Layout */
+.main-content {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Player Area - Focus Center */
+.player-area {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+}
+
+.video-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--border-glass);
+}
+
+.preview-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.caption-overlay {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    transition: var(--transition);
+    pointer-events: none;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 1);
+    white-space: pre-wrap;
+    width: 85%;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Sidebar - Modern Tool Window */
+.sidebar {
+    width: 380px;
+    flex-shrink: 0;
+    background: var(--bg-glass);
+    border-left: 1px solid var(--border-glass);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    margin: 16px;
+    border-radius: 12px;
+}
+
+.tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 10px 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.tab-btn.active {
+    color: #fff;
+    background: var(--primary);
+    box-shadow: var(--glow);
+}
+
+.sidebar-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px 24px 24px;
+}
+
+/* Timeline - Precision Engine */
+.timeline-area {
+    height: 260px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-glass);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.timeline-toolbar {
+    height: 48px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-glass);
+}
+
+.timeline-scroll-container {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    position: relative;
+    background: #0d0d0f;
+}
+
+.timeline-track {
+    position: relative;
+    height: 100%;
+}
+
+.waveform-canvas {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    height: 120px;
+    opacity: 0.6;
+}
+
+.playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    z-index: 100;
+    box-shadow: 0 0 15px var(--accent);
+}
+
+.timeline-block {
+    position: absolute;
+    top: 50px;
+    height: 60px;
+    background: linear-gradient(180deg, rgba(138, 43, 226, 0.4), rgba(138, 43, 226, 0.2));
+    border: 1px solid rgba(138, 43, 226, 0.5);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 12px;
+    padding: 8px;
+    cursor: grab;
+    transition: var(--transition);
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+}
+
+.timeline-block:hover {
+    border-color: var(--accent);
+    background: rgba(138, 43, 226, 0.6);
+}
+
+.timeline-block.active {
+    background: linear-gradient(180deg, rgba(0, 242, 255, 0.4), rgba(0, 242, 255, 0.1));
+    border-color: var(--accent);
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+}
+
+/* Premium Buttons */
+button.primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--glow);
+}
+
+button.primary:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.2);
+}
+
+button.secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border: 1px solid var(--border-glass);
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+button.secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Analysis Cards */
+.ai-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border-glass);
+    margin-bottom: 20px;
+}
+
+.chip {
+    display: inline-block;
+    padding: 4px 12px;
+    background: rgba(0, 242, 255, 0.1);
+    color: var(--accent);
+    border-radius: 20px;
+    font-size: 12px;
+    margin-right: 8px;
+    font-weight: 600;
+    border: 1px solid rgba(0, 242, 255, 0.2);
+}
+
+/* Caption List */
+.caption-item {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid transparent;
+}
+
+.caption-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.caption-item.active {
+    background: rgba(138, 43, 226, 0.1);
+    border-color: var(--primary);
+}
+
+.timestamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    opacity: 0.8;
+}
+
+/* Animations & Spacing */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 1s infinite cubic-bezier(0.5, 0, 0.5, 1);
+}
+
+.upload-placeholder {
+    width: calc(100% - 80px);
+    height: calc(100% - 80px);
+    border: 2px dashed var(--border-glass);
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.upload-placeholder:hover {
+    border-color: var(--accent);
+    background: rgba(0, 242, 255, 0.05);
+    transform: scale(1.01);
+}
