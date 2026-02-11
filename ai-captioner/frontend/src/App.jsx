@@ -159,6 +159,24 @@ const App = () => {
     const canvasRef = useRef(null);
 
     // Polling logic (Web Mode Only)
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyPress = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            } else if (e.code === 'ArrowLeft') {
+                seekTo(Math.max(0, currentTime - 5));
+            } else if (e.code === 'ArrowRight') {
+                seekTo(Math.min(duration, currentTime + 5));
+            }
+        };
+        window.addEventListener('keydown', handleKeyPress);
+        return () => window.removeEventListener('keydown', handleKeyPress);
+    }, [currentTime, duration, status]);
+
     useEffect(() => {
         let timer;
         if (!isElectron && status === 'processing' && jobId) {
@@ -308,20 +326,68 @@ const App = () => {
         };
     }, [isDragging, dragTarget, captions, zoomLevel]);
 
-    const downloadSRT = () => {
-        let content = '';
-        captions.forEach((cap, i) => {
-            content += `${i + 1}\n`;
-            content += `${formatTime(cap.start).replace('.', ',')} --> ${formatTime(cap.end).replace('.', ',')}\n`;
-            content += `${cap.text}\n\n`;
-        });
+    const [isProModalOpen, setIsProModalOpen] = useState(false);
 
-        const blob = new Blob([content], { type: 'text/plain' });
+    const splitCaption = (id) => {
+        const index = captions.findIndex(c => c.id === id);
+        if (index === -1) return;
+        const target = captions[index];
+
+        // Split at currentTime if within bounds, otherwise at midpoint
+        let splitAt = currentTime;
+        if (splitAt <= target.start || splitAt >= target.end) {
+            splitAt = target.start + (target.end - target.start) / 2;
+        }
+
+        const newCaptions = [...captions];
+        newCaptions.splice(index, 1,
+            { ...target, end: splitAt },
+            { id: Date.now(), start: splitAt, end: target.end, text: '...' }
+        );
+        setCaptions(newCaptions);
+    };
+
+    const mergeCaption = (index) => {
+        if (index >= captions.length - 1) return;
+        const current = captions[index];
+        const next = captions[index + 1];
+
+        const newCaptions = [...captions];
+        newCaptions.splice(index, 2, {
+            ...current,
+            end: next.end,
+            text: `${current.text} ${next.text}`
+        });
+        setCaptions(newCaptions);
+    };
+
+    const downloadSRT = () => {
+        let srt = '';
+        captions.forEach((cap, i) => {
+            srt += `${i + 1}\n${formatTime(cap.start)} --> ${formatTime(cap.end)}\n${cap.text}\n\n`;
+        });
+        const blob = new Blob([srt], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = 'captions.srt';
         a.click();
+    };
+
+    const downloadTXT = () => {
+        const text = captions.map(c => c.text).join('\n');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'captions.txt';
+        a.click();
+    };
+
+    const copyToClipboard = () => {
+        const text = captions.map(c => c.text).join('\n');
+        navigator.clipboard.writeText(text);
+        alert('전체 자막이 클립보드에 복사되었습니다.');
     };
 
     // Derived state for current caption
@@ -468,7 +534,23 @@ const App = () => {
                                         </div>
                                         <div className="ai-card">
                                             <h4>🎭 감성 분석</h4>
-                                            <p style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{aiAnalysis.sentiment}</p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <div style={{
+                                                    flex: 1, height: '8px', background: 'rgba(255,255,255,0.1)',
+                                                    borderRadius: '4px', overflow: 'hidden'
+                                                }}>
+                                                    <div style={{
+                                                        width: `${(aiAnalysis.sentimentScore || 0.5) * 100}%`,
+                                                        height: '100%',
+                                                        background: 'var(--accent)',
+                                                        boxShadow: '0 0 10px var(--accent)'
+                                                    }}></div>
+                                                </div>
+                                                <span style={{ color: 'var(--accent)', fontWeight: 'bold', fontSize: '12px' }}>
+                                                    {Math.round((aiAnalysis.sentimentScore || 0.5) * 100)}%
+                                                </span>
+                                            </div>
+                                            <p style={{ marginTop: '8px', color: '#bbb', fontSize: '13px' }}>{aiAnalysis.sentiment}</p>
                                         </div>
                                         <div className="ai-card">
                                             <h4>🏷️ 키워드</h4>
@@ -504,18 +586,27 @@ const App = () => {
 
                         {activeTab === 'list' && (
                             <div>
-                                <button className="secondary" style={{ width: '100%', marginBottom: '16px' }} onClick={downloadSRT}>
-                                    📥 SRT 다운로드
-                                </button>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', marginBottom: '16px' }}>
+                                    <button className="secondary" onClick={downloadSRT}>📥 SRT</button>
+                                    <button className="secondary" onClick={downloadTXT}>📄 TXT</button>
+                                    <button className="secondary" style={{ gridColumn: 'span 2' }} onClick={copyToClipboard}>📋 전체 텍스트 복사</button>
+                                </div>
                                 <div className="caption-items small">
                                     {captions.map((cap, i) => (
                                         <div
-                                            key={i}
-                                            className={`caption-item ${currentTime >= cap.start && currentTime <= cap.end ? 'active' : ''}`}
+                                            key={cap.id}
+                                            className={`caption-card ${currentTime >= cap.start && currentTime <= cap.end ? 'active' : ''}`}
                                             onClick={() => seekTo(cap.start)}
                                         >
-                                            <span className="timestamp">{formatTime(cap.start).split(',')[0]}</span>
-                                            <p>{cap.text}</p>
+                                            <div className="cap-time">{formatTime(cap.start)} - {formatTime(cap.end)}</div>
+                                            <textarea
+                                                value={cap.text}
+                                                onChange={(e) => updateCaption(cap.id, e.target.value)}
+                                            />
+                                            <div className="cap-actions">
+                                                <button className="icon-btn" title="분할" onClick={(e) => { e.stopPropagation(); splitCaption(cap.id); }}>✂️</button>
+                                                <button className="icon-btn" title="병합" onClick={(e) => { e.stopPropagation(); mergeCaption(i); }}>🔗</button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

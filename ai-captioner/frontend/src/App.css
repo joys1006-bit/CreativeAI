@@ -55,6 +55,7 @@ body {
     letter-spacing: -1px;
     background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.2));
 }
@@ -353,4 +354,172 @@ button.secondary:hover {
     border-color: var(--accent);
     background: rgba(0, 242, 255, 0.05);
     transform: scale(1.01);
+}
+
+/* Caption Cards & Professional Editing */
+.caption-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: var(--transition);
+}
+
+.caption-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.caption-card.active {
+    background: rgba(138, 43, 226, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.1);
+}
+
+.cap-time {
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.caption-card textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #fff;
+    resize: none;
+    font-size: 14px;
+    line-height: 1.5;
+    outline: none;
+}
+
+.cap-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.caption-card:hover .cap-actions {
+    opacity: 1;
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    transition: var(--transition);
+}
+
+.icon-btn:hover {
+    background: var(--primary);
+    transform: scale(1.1);
+}
+
+/* Pro Banner & Modal */
+.pro-banner {
+    margin: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(0, 242, 255, 0.1));
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: var(--transition);
+    position: sticky;
+    bottom: 16px;
+}
+
+.pro-banner:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+}
+
+.pro-banner span {
+    font-weight: 800;
+    color: var(--accent);
+    font-size: 0.9rem;
+}
+
+.pro-banner small {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.pro-modal {
+    background: var(--bg-panel);
+    width: 480px;
+    border-radius: 24px;
+    border: 1px solid var(--border-glass);
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.pro-header h2 {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.pro-features {
+    text-align: left;
+    margin: 32px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.feature-item {
+    font-size: 1.05rem;
+    color: var(--text-main);
+}
+
+.gold {
+    background: linear-gradient(135deg, #ffd700 0%, #daa520 100%) !important;
+    color: #000 !important;
+    width: 100%;
+    height: 50px;
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+}
+
+.text-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.text-btn:hover {
+    color: #fff;
 }

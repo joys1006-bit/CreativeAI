@@ -41,7 +41,8 @@ async function transcribeWithGemini(audioPath, targetLanguage = 'ko', retryCount
         1. **segments**: 3-5초 단위의 정밀한 자막 세그먼트 (start, end, text). 텍스트는 축자 전사를 원칙으로 하되 대상 언어로 자연스럽게 번역/교정하세요.
         2. **summary**: 전체 오디오의 핵심 내용을 관통하는 2-3문장의 상세 요약.
         3. **keywords**: 오디오의 주제를 나타내는 핵심 태그 5개.
-        4. **sentiment**: 화자의 목소리 톤과 내용을 바탕으로 한 감성 분석 결과 (예: "긍정적이고 열정적인 톤", "차분하고 분석적인 설명" 등).
+        4. **sentiment**: 화자의 목소리 톤과 내용을 바탕으로 한 감성 분석 결과 한 줄.
+        5. **sentimentScore**: 화자의 긍정도/열정도를 0.0(부정/조용)에서 1.0(긍정/에너지) 사이의 수치로 산출.
         
         JSON 구조:
         {
@@ -50,7 +51,8 @@ async function transcribeWithGemini(audioPath, targetLanguage = 'ko', retryCount
             ],
             "summary": "...",
             "keywords": ["...", "..."],
-            "sentiment": "..."
+            "sentiment": "...",
+            "sentimentScore": 0.85
         }
         `;
 

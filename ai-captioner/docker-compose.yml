@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: ai-captioner-api
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/temp:/app/temp
+
+  frontend:
+    build: ./frontend
+    container_name: ai-captioner-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend

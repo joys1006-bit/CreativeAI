@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const { extractAudio } = require('./services/audioService');
 const { transcribeWithGemini } = require('./services/geminiService');
 const { generateWaveform } = require('./services/waveformService');
+const logger = require('./services/logger');
 
 const app = express();
 const port = 8000;
@@ -26,9 +27,29 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-const jobs = {}; // Use plain object for easier JSON serialization
+const JOBS_FILE = path.join(__dirname, 'jobs.json');
+let jobs = {};
 
-app.get('/', (req, res) => res.send('AI Captioner Pro Backend - Operational 🚀'));
+// Load jobs from file on start
+if (fs.existsSync(JOBS_FILE)) {
+    try {
+        jobs = JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8'));
+        console.log(`[Server] Loaded ${Object.keys(jobs).length} jobs from storage.`);
+    } catch (e) {
+        logger.error("Failed to load jobs file.", e);
+        jobs = {};
+    }
+}
+
+function saveJobs() {
+    try {
+        fs.writeFileSync(JOBS_FILE, JSON.stringify(jobs, null, 2));
+    } catch (e) {
+        logger.error("Failed to save jobs file.", e);
+    }
+}
+
+app.get('/', (req, res) => res.send('CreativeAI Insight Backend - Operational 🚀'));
 
 app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded');
@@ -46,19 +67,25 @@ app.post('/upload', upload.single('file'), (req, res) => {
         summary: '',
         keywords: [],
         sentiment: '',
-        waveform: []
+        sentimentScore: 0.5,
+        waveform: [],
+        createdAt: new Date().toISOString()
     };
     jobs[jobId] = job;
+    saveJobs();
 
-    // Background process orchestration
-    console.log(`[Server] Job ${jobId} initiated (Lang: ${targetLanguage})`);
+    logger.audit('SYSTEM', 'UPLOAD_START', { jobId, fileName: req.file.originalname, targetLanguage });
 
     extractAudio(videoPath, audioPath)
-        .then(() => processTranscription(jobId, videoPath, audioPath, targetLanguage))
+        .then(() => {
+            logger.info(`[Job ${jobId}] Audio extraction successful.`);
+            processTranscription(jobId, videoPath, audioPath, targetLanguage);
+        })
         .catch(err => {
-            console.error(`[Job ${jobId}] Extraction error:`, err);
+            logger.error(`[Job ${jobId}] Extraction failed.`, err);
             job.status = 'FAILED';
             job.error = "오디오 추출 실패";
+            saveJobs();
         });
 
     res.json({ jobId });
@@ -70,7 +97,8 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
 
     try {
         job.status = 'PROCESSING';
-        console.log(`[Job ${jobId}] Step 2: Running AI Analysis (${targetLanguage})...`);
+        saveJobs();
+        logger.info(`[Job ${jobId}] Phase 2: AI Intelligence Analysis started.`, { targetLanguage });
 
         const [geminiResult, waveformData] = await Promise.all([
             transcribeWithGemini(audioPath, targetLanguage),
@@ -81,14 +109,18 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
         job.summary = geminiResult.summary;
         job.keywords = geminiResult.keywords;
         job.sentiment = geminiResult.sentiment;
+        job.sentimentScore = geminiResult.sentimentScore || 0.5;
         job.waveform = waveformData;
         job.status = 'COMPLETED';
+        saveJobs();
 
-        console.log(`[Job ${jobId}] Success: Analysis completed.`);
+        logger.info(`[Job ${jobId}] Step COMPLETE: Analysis finished.`);
+        logger.audit('AI_ENGINE', 'ANALYSIS_FINISH', { jobId, segmentCount: job.segments.length });
     } catch (error) {
-        console.error(`[Job ${jobId}] AI/Waveform Error:`, error);
+        logger.error(`[Job ${jobId}] AI/Waveform Engine Error.`, error);
         job.status = 'FAILED';
         job.error = error.message;
+        saveJobs();
     }
 }
 
@@ -98,8 +130,37 @@ app.get('/status/:jobId', (req, res) => {
     res.json(job);
 });
 
-const server = app.listen(port, () => {
-    console.log(`[AI Captioner Pro] Backend listening at http://localhost:${port}`);
+// 24h Automatic Job Cleanup Scheduler
+setInterval(() => {
+    logger.info("[Cleanup] Scanning for expired jobs (24h+)...");
+    const now = Date.now();
+    let deletedCount = 0;
+
+    Object.keys(jobs).forEach(jobId => {
+        const job = jobs[jobId];
+        const createdAt = new Date(job.createdAt || 0).getTime();
+
+        if (now - createdAt > 24 * 60 * 60 * 1000) {
+            // Delete files
+            const videoPath = path.join(UPLOAD_DIR, `${jobId}${path.extname(job.fileName)}`);
+            const audioPath = path.join(UPLOAD_DIR, `${jobId}.wav`);
+            [videoPath, audioPath].forEach(p => {
+                if (fs.existsSync(p)) fs.unlinkSync(p);
+            });
+
+            delete jobs[jobId];
+            deletedCount++;
+        }
+    });
+
+    if (deletedCount > 0) {
+        saveJobs();
+        logger.info(`[Cleanup] Successfully removed ${deletedCount} expired jobs.`);
+    }
+}, 60 * 60 * 1000); // Check every hour
+
+app.listen(port, () => {
+    logger.info(`CreativeAI Insight Backend listening at http://localhost:${port}`);
 }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
         console.error(`[CRITICAL] Port ${port} is already in use.`);
