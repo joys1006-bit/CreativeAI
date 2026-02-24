@@ -1,146 +1,155 @@
 import React from 'react';
 
 /**
- * 리본 툴바 컴포넌트
- * - 홈/편집/자막/내보내기 탭별 도구 패널
- * - 버튼 비활성화 상태 관리
+ * [CPO 담당] 리본 툴바
+ * - 홈/편집/자막/내보내기 4탭
+ * - 자막 분할/스타일/무음 감지 버튼 추가
  */
 const RibbonToolbar = ({
     activeTab, setActiveTab,
-    onSelectFile, onStartAnalysis,
-    onExportVideo, onExportSRT,
+    onSelectFile, onStartAnalysis, onExportVideo, onExportSRT,
     status, syncOffset, setSyncOffset,
     hasFile, hasCaptions,
-    onAddCaption, onMergeCaptions,
+    onAddCaption, onMergeCaptions, onSplitCaption,
     onToggleInsight, showInsight,
-    onUndo, onRedo, canUndo, canRedo
+    onUndo, onRedo, canUndo, canRedo,
+    onToggleStylePanel,
+    onDetectSilence, onRemoveSilence, silenceCount = 0,
 }) => {
+    const isProcessing = status === 'processing' || status === 'uploading';
+
     const tabs = [
-        { id: 'home', label: '홈', icon: '🏠' },
-        { id: 'edit', label: '편집', icon: '✂️' },
-        { id: 'subtitle', label: '자막', icon: '📝' },
-        { id: 'export', label: '내보내기', icon: '📤' }
+        { id: 'home', label: '홈' },
+        { id: 'edit', label: '편집' },
+        { id: 'subtitle', label: '자막' },
+        { id: 'export', label: '내보내기' },
     ];
 
-    const isProcessing = status === 'uploading' || status === 'processing' || status === 'exporting';
-
     return (
-        <nav className="ribbon-system">
-            <div className="tabs-container">
+        <div className="ribbon-toolbar">
+            {/* 탭 헤더 */}
+            <div className="ribbon-tabs">
                 {tabs.map(tab => (
-                    <div
+                    <button
                         key={tab.id}
-                        className={`tab-item ${activeTab === tab.id ? 'active' : ''}`}
+                        className={`ribbon-tab ${activeTab === tab.id ? 'active' : ''}`}
                         onClick={() => setActiveTab(tab.id)}
                     >
-                        <span className="tab-icon">{tab.icon}</span>
-                        <span className="tab-label">{tab.label}</span>
-                    </div>
+                        {tab.label}
+                    </button>
                 ))}
             </div>
 
-            <div className="toolbar-content">
-                {/* ===== 홈 탭 ===== */}
+            {/* 탭 컨텐츠 */}
+            <div className="ribbon-content">
                 {activeTab === 'home' && (
-                    <div className="tool-group">
-                        <div className="tool-item" onClick={onSelectFile}>
-                            <span className="tool-icon">📁</span>
-                            <span className="tool-label">영상 불러오기</span>
+                    <div className="ribbon-group">
+                        <div className="tool-section">
+                            <span className="section-label">파일</span>
+                            <button className="tool-btn" onClick={onSelectFile} disabled={isProcessing}>
+                                <span className="tool-icon">📂</span>
+                                <span>영상 불러오기</span>
+                            </button>
                         </div>
-                        <div className="divider" />
-                        <div
-                            className={`tool-item ${!hasFile || isProcessing ? 'disabled' : ''}`}
-                            onClick={hasFile && !isProcessing ? onStartAnalysis : undefined}
-                        >
-                            <span className="tool-icon">⚡</span>
-                            <span className="tool-label">AI 자동 자막</span>
+                        <div className="ribbon-divider" />
+                        <div className="tool-section">
+                            <span className="section-label">AI 엔진</span>
+                            <button className="tool-btn primary" onClick={onStartAnalysis} disabled={!hasFile || isProcessing}>
+                                <span className="tool-icon">🤖</span>
+                                <span>AI 자동 자막</span>
+                            </button>
+                            <button className="tool-btn" onClick={onToggleInsight} disabled={!hasCaptions}>
+                                <span className="tool-icon">{showInsight ? '📊' : '📈'}</span>
+                                <span>AI 분석</span>
+                            </button>
                         </div>
-                        <div className="divider" />
-                        <div
-                            className={`tool-item ${!hasCaptions ? 'disabled' : ''} ${showInsight ? 'tool-active' : ''}`}
-                            onClick={hasCaptions ? onToggleInsight : undefined}
-                        >
-                            <span className="tool-icon">🧠</span>
-                            <span className="tool-label">AI 분석</span>
+                        <div className="ribbon-divider" />
+                        <div className="tool-section">
+                            <span className="section-label">무음 처리</span>
+                            <button className="tool-btn" onClick={onDetectSilence} disabled={!hasFile || isProcessing}>
+                                <span className="tool-icon">🔇</span>
+                                <span>무음 탐지</span>
+                            </button>
+                            {silenceCount > 0 && (
+                                <button className="tool-btn warning" onClick={onRemoveSilence}>
+                                    <span className="tool-icon">✂️</span>
+                                    <span>무음 제거 ({silenceCount})</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
 
-                {/* ===== 편집 탭 ===== */}
                 {activeTab === 'edit' && (
-                    <div className="tool-group">
-                        <div
-                            className={`tool-item ${!canUndo ? 'disabled' : ''}`}
-                            onClick={canUndo ? onUndo : undefined}
-                        >
-                            <span className="tool-icon">↩️</span>
-                            <span className="tool-label">되돌리기</span>
+                    <div className="ribbon-group">
+                        <div className="tool-section">
+                            <span className="section-label">실행 취소</span>
+                            <button className="tool-btn" onClick={onUndo} disabled={!canUndo}>
+                                <span className="tool-icon">↩️</span>
+                                <span>되돌리기</span>
+                            </button>
+                            <button className="tool-btn" onClick={onRedo} disabled={!canRedo}>
+                                <span className="tool-icon">↪️</span>
+                                <span>다시하기</span>
+                            </button>
                         </div>
-                        <div
-                            className={`tool-item ${!canRedo ? 'disabled' : ''}`}
-                            onClick={canRedo ? onRedo : undefined}
-                        >
-                            <span className="tool-icon">↪️</span>
-                            <span className="tool-label">다시하기</span>
+                        <div className="ribbon-divider" />
+                        <div className="tool-section">
+                            <span className="section-label">자막 스타일</span>
+                            <button className="tool-btn" onClick={onToggleStylePanel} disabled={!hasCaptions}>
+                                <span className="tool-icon">🎨</span>
+                                <span>스타일 편집</span>
+                            </button>
                         </div>
-                        <div className="divider" />
-                        <div className="tool-item">
-                            <span className="tool-icon">🔳</span>
-                            <span className="tool-label">자막 스타일</span>
+                        <div className="ribbon-divider" />
+                        <div className="tool-section">
+                            <span className="section-label">싱크 조절</span>
+                            <div className="sync-control">
+                                <button className="mini-btn" onClick={() => setSyncOffset(prev => prev - 0.1)}>-0.1s</button>
+                                <span className="sync-value">{syncOffset >= 0 ? '+' : ''}{syncOffset.toFixed(1)}s</span>
+                                <button className="mini-btn" onClick={() => setSyncOffset(prev => prev + 0.1)}>+0.1s</button>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* ===== 자막 탭 ===== */}
                 {activeTab === 'subtitle' && (
-                    <div className="tool-group">
-                        <div
-                            className={`tool-item ${!hasFile ? 'disabled' : ''}`}
-                            onClick={hasFile ? onAddCaption : undefined}
-                        >
-                            <span className="tool-icon">➕</span>
-                            <span className="tool-label">자막 추가</span>
-                        </div>
-                        <div
-                            className={`tool-item ${!hasCaptions ? 'disabled' : ''}`}
-                            onClick={hasCaptions ? onMergeCaptions : undefined}
-                        >
-                            <span className="tool-icon">🔗</span>
-                            <span className="tool-label">자막 합치기</span>
-                        </div>
-                        <div className="divider" />
-                        <div className="tool-sync-control">
-                            <label>싱크 조절 ({syncOffset.toFixed(1)}s)</label>
-                            <input
-                                type="range" min="-2.0" max="2.0" step="0.1"
-                                value={syncOffset}
-                                onChange={(e) => setSyncOffset(parseFloat(e.target.value))}
-                            />
+                    <div className="ribbon-group">
+                        <div className="tool-section">
+                            <span className="section-label">자막 편집</span>
+                            <button className="tool-btn" onClick={onAddCaption} disabled={!hasFile}>
+                                <span className="tool-icon">➕</span>
+                                <span>자막 추가</span>
+                            </button>
+                            <button className="tool-btn" onClick={onSplitCaption} disabled={!hasCaptions}>
+                                <span className="tool-icon">✂️</span>
+                                <span>분할</span>
+                            </button>
+                            <button className="tool-btn" onClick={onMergeCaptions} disabled={!hasCaptions}>
+                                <span className="tool-icon">🔗</span>
+                                <span>합치기</span>
+                            </button>
                         </div>
                     </div>
                 )}
 
-                {/* ===== 내보내기 탭 ===== */}
                 {activeTab === 'export' && (
-                    <div className="tool-group">
-                        <div
-                            className={`tool-item ${!hasCaptions || isProcessing ? 'disabled' : ''}`}
-                            onClick={hasCaptions && !isProcessing ? onExportVideo : undefined}
-                        >
-                            <span className="tool-icon">🎬</span>
-                            <span className="tool-label">영상 내보내기</span>
-                        </div>
-                        <div
-                            className={`tool-item ${!hasCaptions ? 'disabled' : ''}`}
-                            onClick={hasCaptions ? onExportSRT : undefined}
-                        >
-                            <span className="tool-icon">📄</span>
-                            <span className="tool-label">SRT 파일 저장</span>
+                    <div className="ribbon-group">
+                        <div className="tool-section">
+                            <span className="section-label">내보내기</span>
+                            <button className="tool-btn primary" onClick={onExportVideo} disabled={!hasCaptions || isProcessing}>
+                                <span className="tool-icon">🎬</span>
+                                <span>영상 내보내기</span>
+                            </button>
+                            <button className="tool-btn" onClick={onExportSRT} disabled={!hasCaptions}>
+                                <span className="tool-icon">📄</span>
+                                <span>SRT 저장</span>
+                            </button>
                         </div>
                     </div>
                 )}
             </div>
-        </nav>
+        </div>
     );
 };
 

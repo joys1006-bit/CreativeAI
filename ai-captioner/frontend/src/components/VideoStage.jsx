@@ -3,20 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * 비디오 스테이지 컴포넌트
- * - 재생/일시정지 오버레이 애니메이션
- * - 자막 오버레이 트랜지션
- * - FIX: onPlay/onPause/onEnded 이벤트로 상태 동기화
- * - FIX: timeoutRef 메모리 릭 방지
+ * - subtitleStyle prop으로 자막 스타일 적용
+ * - 재생/일시정지 오버레이 + 자막 트랜지션
  */
-const VideoStage = ({ videoRef, previewUrl, currentCaption, togglePlay, handleTimeUpdate, handleLoadedMetadata, handlePlay, handlePause, handleEnded, isPlaying }) => {
+const VideoStage = ({ videoRef, previewUrl, currentCaption, togglePlay, handleTimeUpdate, handleLoadedMetadata, handlePlay, handlePause, handleEnded, isPlaying, subtitleStyle = {} }) => {
     const [showPlayIcon, setShowPlayIcon] = React.useState(false);
     const timeoutRef = React.useRef(null);
 
-    // FIX: 컴포넌트 언마운트 시 timeout 정리
     React.useEffect(() => {
-        return () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        };
+        return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
     }, []);
 
     const handleClick = () => {
@@ -24,6 +19,14 @@ const VideoStage = ({ videoRef, previewUrl, currentCaption, togglePlay, handleTi
         setShowPlayIcon(true);
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => setShowPlayIcon(false), 600);
+    };
+
+    const getSubtitlePosition = () => {
+        switch (subtitleStyle.position) {
+            case 'top': return { top: '10%', bottom: 'auto' };
+            case 'center': return { top: '50%', bottom: 'auto', transform: 'translate(-50%, -50%)' };
+            default: return { bottom: '10%', top: 'auto' };
+        }
     };
 
     return (
@@ -41,11 +44,9 @@ const VideoStage = ({ videoRef, previewUrl, currentCaption, togglePlay, handleTi
                         onPause={handlePause}
                         onEnded={handleEnded}
                     />
-                    {/* 재생/일시정지 오버레이 */}
                     <AnimatePresence>
                         {showPlayIcon && (
-                            <motion.div
-                                className="play-overlay"
+                            <motion.div className="play-overlay"
                                 initial={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 1.5 }}
@@ -56,7 +57,6 @@ const VideoStage = ({ videoRef, previewUrl, currentCaption, togglePlay, handleTi
                         )}
                     </AnimatePresence>
 
-                    {/* 자막 오버레이 */}
                     <AnimatePresence mode="wait">
                         {currentCaption && (
                             <motion.div
@@ -66,6 +66,18 @@ const VideoStage = ({ videoRef, previewUrl, currentCaption, togglePlay, handleTi
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.2 }}
+                                style={{
+                                    fontFamily: subtitleStyle.fontFamily || "'Pretendard', sans-serif",
+                                    fontSize: `${subtitleStyle.fontSize || 24}px`,
+                                    color: subtitleStyle.color || '#FFFFFF',
+                                    background: subtitleStyle.bgColor || 'rgba(0,0,0,0.6)',
+                                    fontWeight: subtitleStyle.bold ? 700 : 400,
+                                    fontStyle: subtitleStyle.italic ? 'italic' : 'normal',
+                                    textShadow: subtitleStyle.shadow ? '2px 2px 4px rgba(0,0,0,0.8)' : 'none',
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    ...getSubtitlePosition(),
+                                }}
                             >
                                 {currentCaption.text}
                             </motion.div>
@@ -74,13 +86,10 @@ const VideoStage = ({ videoRef, previewUrl, currentCaption, togglePlay, handleTi
                 </div>
             ) : (
                 <div className="stage-empty">
-                    <motion.div
-                        className="empty-icon"
+                    <motion.div className="empty-icon"
                         animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
                         transition={{ repeat: Infinity, duration: 3 }}
-                    >
-                        🎬
-                    </motion.div>
+                    >🎬</motion.div>
                     <p>작업할 영상을 불러와주세요</p>
                     <button className="btn-primary" onClick={() => document.querySelector('input[type="file"]').click()}>
                         영상 파일 선택

@@ -11,8 +11,21 @@ import Timeline from './components/Timeline';
 import ProgressOverlay from './components/ProgressOverlay';
 import AiInsightPanel from './components/AiInsightPanel';
 import Toast from './components/Toast';
+import SubtitleStylePanel from './components/SubtitleStylePanel';
+import { ThemeToggle } from './components/ThemeProvider';
 
 const API_BASE = 'http://localhost:8000';
+
+const DEFAULT_SUBTITLE_STYLE = {
+    fontFamily: "'Pretendard', sans-serif",
+    fontSize: 24,
+    color: '#FFFFFF',
+    bgColor: 'rgba(0,0,0,0.6)',
+    position: 'bottom',
+    shadow: true,
+    bold: false,
+    italic: false,
+};
 
 const App = () => {
     // --- State: 데이터 ---
@@ -33,6 +46,13 @@ const App = () => {
     const [activeTab, setActiveTab] = useState('home');
     const [syncOffset, setSyncOffset] = useState(0.0);
     const [showInsight, setShowInsight] = useState(false);
+
+    // --- State: 자막 스타일 ---
+    const [subtitleStyle, setSubtitleStyle] = useState(DEFAULT_SUBTITLE_STYLE);
+    const [showStylePanel, setShowStylePanel] = useState(false);
+
+    // --- State: 무음 구간 ---
+    const [silenceSegments, setSilenceSegments] = useState([]);
 
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
@@ -60,15 +80,12 @@ const App = () => {
     }, []);
 
     // === Undo/Redo 헬퍼 ===
-    // FIX: pushHistory를 useRef 기반으로 변경하여 stale closure 방지
     const historyRef = useRef({ captionHistory: [], historyIndex: -1 });
 
-    // historyRef를 state와 동기화
     useEffect(() => {
         historyRef.current = { captionHistory, historyIndex };
     }, [captionHistory, historyIndex]);
 
-    // FIX: 디바운스된 히스토리 저장 (매 키입력이 아닌 500ms 쉬면 저장)
     const pushHistory = useCallback((newCaptions) => {
         if (historyDebounceRef.current) clearTimeout(historyDebounceRef.current);
         historyDebounceRef.current = setTimeout(() => {
@@ -102,12 +119,8 @@ const App = () => {
     // === 재생 로직 ===
     const togglePlay = useCallback(() => {
         if (!videoRef.current) return;
-        if (videoRef.current.paused) {
-            videoRef.current.play();
-        } else {
-            videoRef.current.pause();
-        }
-        // isPlaying은 onPlay/onPause 이벤트에서 관리
+        if (videoRef.current.paused) videoRef.current.play();
+        else videoRef.current.pause();
     }, []);
 
     const seekTo = useCallback((time) => {
@@ -117,14 +130,13 @@ const App = () => {
         }
     }, []);
 
-    // FIX: 비디오 재생 상태를 이벤트 기반으로 동기화
     const handlePlay = useCallback(() => setIsPlaying(true), []);
     const handlePause = useCallback(() => setIsPlaying(false), []);
     const handleEnded = useCallback(() => setIsPlaying(false), []);
     const handleTimeUpdate = () => setCurrentTime(videoRef.current?.currentTime || 0);
     const handleLoadedMetadata = () => setDuration(videoRef.current?.duration || 0);
 
-    // 고빈도 업데이트 루프 (requestAnimationFrame)
+    // 고빈도 업데이트 루프
     useEffect(() => {
         let animationFrameId;
         const loop = () => {
@@ -138,7 +150,6 @@ const App = () => {
     }, []);
 
     // === SRT 내보내기 ===
-    // FIX: handleExportSRT를 키보드 단축키보다 먼저 정의
     const handleExportSRT = useCallback(() => {
         if (captions.length === 0) return addToast('자막 데이터가 없습니다', 'warning');
         const srtContent = captions.map((c, i) => {
@@ -164,10 +175,8 @@ const App = () => {
     }, [captions, syncOffset, file, addToast]);
 
     // === 키보드 단축키 ===
-    // FIX: handleExportSRT를 deps에 포함
     useEffect(() => {
         const handleKeyDown = (e) => {
-            // textarea/input 입력 중에는 무시
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
 
             switch (e.code) {
@@ -209,7 +218,6 @@ const App = () => {
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
-            // 이전 previewUrl 해제 (메모리 릭 방지)
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             setFile(selectedFile);
             setPreviewUrl(URL.createObjectURL(selectedFile));
@@ -218,6 +226,7 @@ const App = () => {
             setWaveform([]);
             setStatus('idle');
             setShowInsight(false);
+            setSilenceSegments([]);
             setCaptionHistory([]);
             setHistoryIndex(-1);
             addToast(`"${selectedFile.name}" 로드 완료`, 'success');
@@ -249,24 +258,13 @@ const App = () => {
     // === 폴링 ===
     useEffect(() => {
         let timer;
-        let pollCount = 0;
         if (status === 'processing' && jobId) {
             timer = setInterval(async () => {
                 try {
-                    pollCount++;
-
-                    // FIX: 백엔드 progress API에서 실제 단계 가져오기
                     try {
                         const progressRes = await axios.get(`${API_BASE}/progress/${jobId}`);
-                        if (progressRes.data.stage) {
-                            setProgress({ stage: progressRes.data.stage });
-                        }
-                    } catch (_) {
-                        // progress API 미지원 시 폴백 시뮬레이션
-                        if (pollCount === 3) setProgress({ stage: 'transcribing' });
-                        if (pollCount === 8) setProgress({ stage: 'correcting' });
-                        if (pollCount === 12) setProgress({ stage: 'finalizing' });
-                    }
+                        if (progressRes.data.stage) setProgress({ stage: progressRes.data.stage });
+                    } catch (_) { }
 
                     const res = await axios.get(`${API_BASE}/status/${jobId}`);
                     if (res.data.status === 'COMPLETED') {
@@ -284,7 +282,6 @@ const App = () => {
                         });
                         setWaveform(res.data.waveform || []);
                         setStatus('completed');
-                        // 초기 히스토리 저장
                         setCaptionHistory([JSON.parse(JSON.stringify(segments))]);
                         setHistoryIndex(0);
                         clearInterval(timer);
@@ -306,10 +303,7 @@ const App = () => {
         setStatus('exporting');
         addToast('영상 내보내기를 시작합니다...', 'info');
         try {
-            const res = await axios.post(`${API_BASE}/export-video`, {
-                jobId,
-                withSubtitles: true
-            });
+            const res = await axios.post(`${API_BASE}/export-video`, { jobId, withSubtitles: true });
             window.open(res.data.downloadUrl, '_blank');
             setStatus('completed');
             addToast('영상 내보내기 완료!', 'success');
@@ -320,100 +314,98 @@ const App = () => {
     };
 
     // === 자막 CRUD ===
-    // FIX: pushHistory를 setCaptions 밖에서 호출
     const updateCaption = useCallback((id, newText) => {
-        setCaptions(prev => {
-            const updated = prev.map((c, idx) =>
-                (c.id === id || idx === id) ? { ...c, text: newText } : c
-            );
-            return updated;
-        });
-        // 디바운스된 히스토리
-        setCaptions(current => {
-            pushHistory(current);
-            return current;
-        });
+        setCaptions(prev => prev.map((c, idx) => (c.id === id || idx === id) ? { ...c, text: newText } : c));
+        setCaptions(current => { pushHistory(current); return current; });
     }, [pushHistory]);
 
     const deleteCaption = useCallback((index) => {
-        setCaptions(prev => {
-            const updated = prev.filter((_, i) => i !== index);
-            return updated;
-        });
-        // 삭제는 즉시 히스토리
-        setTimeout(() => {
-            setCaptions(current => {
-                pushHistory(current);
-                return current;
-            });
-        }, 0);
+        setCaptions(prev => prev.filter((_, i) => i !== index));
+        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
         addToast('자막이 삭제되었습니다', 'info');
     }, [pushHistory, addToast]);
 
     const addCaption = useCallback(() => {
         const newStart = currentTime;
         const newEnd = Math.min(currentTime + 3, duration || currentTime + 3);
-        const newSegment = {
-            id: `seg_new_${Date.now()}`,
-            start: newStart,
-            end: newEnd,
-            text: '새 자막',
-            confidence: 1.0
-        };
-        setCaptions(prev => {
-            const updated = [...prev, newSegment].sort((a, b) => a.start - b.start);
-            return updated;
-        });
-        setTimeout(() => {
-            setCaptions(current => {
-                pushHistory(current);
-                return current;
-            });
-        }, 0);
+        const newSegment = { id: `seg_new_${Date.now()}`, start: newStart, end: newEnd, text: '새 자막', confidence: 1.0 };
+        setCaptions(prev => [...prev, newSegment].sort((a, b) => a.start - b.start));
+        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
         addToast('새 자막이 추가되었습니다', 'success');
     }, [currentTime, duration, pushHistory, addToast]);
 
     const mergeCaptions = useCallback(() => {
         if (captions.length < 2) return addToast('합칠 자막이 부족합니다', 'warning');
-        const currentIdx = captions.findIndex(c => {
-            const start = c.start + syncOffset;
-            const end = c.end + syncOffset;
-            return currentTime >= start && currentTime <= end;
-        });
-
+        const currentIdx = captions.findIndex(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
         if (currentIdx === -1 || currentIdx >= captions.length - 1) {
             return addToast('합칠 위치를 찾을 수 없습니다. 재생 바를 자막 위에 놓아주세요.', 'warning');
         }
-
         const current = captions[currentIdx];
         const next = captions[currentIdx + 1];
-        const merged = {
-            ...current,
-            end: next.end,
-            text: current.text + ' ' + next.text
-        };
-
-        setCaptions(prev => {
-            const updated = [...prev];
-            updated[currentIdx] = merged;
-            updated.splice(currentIdx + 1, 1);
-            return updated;
-        });
-        setTimeout(() => {
-            setCaptions(current => {
-                pushHistory(current);
-                return current;
-            });
-        }, 0);
+        const merged = { ...current, end: next.end, text: current.text + ' ' + next.text };
+        setCaptions(prev => { const u = [...prev]; u[currentIdx] = merged; u.splice(currentIdx + 1, 1); return u; });
+        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
         addToast('자막 2개가 합쳐졌습니다', 'success');
     }, [captions, currentTime, syncOffset, pushHistory, addToast]);
 
+    // === 자막 분할 ===
+    const splitCaption = useCallback(() => {
+        const currentIdx = captions.findIndex(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
+        if (currentIdx === -1) return addToast('분할할 자막을 찾을 수 없습니다. 재생 바를 자막 위에 놓아주세요.', 'warning');
+
+        const cap = captions[currentIdx];
+        const splitTime = currentTime - syncOffset;
+        if (splitTime <= cap.start + 0.1 || splitTime >= cap.end - 0.1) {
+            return addToast('분할 지점이 자막의 시작/끝에 너무 가깝습니다.', 'warning');
+        }
+
+        // 텍스트 중간 지점에서 분할
+        const text = cap.text;
+        const mid = Math.floor(text.length / 2);
+        const spaceIdx = text.indexOf(' ', mid);
+        const splitIdx = spaceIdx !== -1 ? spaceIdx : mid;
+
+        const first = { ...cap, end: splitTime, text: text.substring(0, splitIdx).trim(), id: `seg_split_a_${Date.now()}` };
+        const second = { ...cap, start: splitTime, text: text.substring(splitIdx).trim(), id: `seg_split_b_${Date.now()}` };
+
+        setCaptions(prev => {
+            const u = [...prev];
+            u.splice(currentIdx, 1, first, second);
+            return u;
+        });
+        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
+        addToast('자막이 분할되었습니다', 'success');
+    }, [captions, currentTime, syncOffset, pushHistory, addToast]);
+
+    // === 무음 구간 감지 ===
+    const detectSilence = useCallback(async () => {
+        if (!jobId) return addToast('먼저 영상을 분석해주세요', 'warning');
+        addToast('무음 구간을 탐지하고 있습니다...', 'info');
+        try {
+            const res = await axios.get(`${API_BASE}/silence-detect/${jobId}`);
+            setSilenceSegments(res.data.silenceSegments || []);
+            addToast(`🔇 무음 구간 ${res.data.silenceSegments?.length || 0}개 발견`, 'success');
+        } catch (e) {
+            addToast('무음 탐지 실패: ' + (e.response?.data?.error || e.message), 'error');
+        }
+    }, [jobId, addToast]);
+
+    const removeSilence = useCallback(async () => {
+        if (!jobId || silenceSegments.length === 0) return addToast('먼저 무음 구간을 탐지해주세요', 'warning');
+        addToast('무음 구간을 제거하고 있습니다...', 'info');
+        try {
+            const res = await axios.post(`${API_BASE}/remove-silence`, { jobId, silenceSegments });
+            if (res.data.downloadUrl) {
+                window.open(res.data.downloadUrl, '_blank');
+                addToast('✅ 무음 제거 완료! 새 영상이 다운로드됩니다.', 'success');
+            }
+        } catch (e) {
+            addToast('무음 제거 실패: ' + (e.response?.data?.error || e.message), 'error');
+        }
+    }, [jobId, silenceSegments, addToast]);
+
     // === 현재 자막 ===
-    const currentCaption = captions.find(c => {
-        const start = c.start + syncOffset;
-        const end = c.end + syncOffset;
-        return currentTime >= start && currentTime <= end;
-    });
+    const currentCaption = captions.find(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
 
     const formatTime = (s) => {
         if (!s || isNaN(s)) return '00:00';
@@ -428,11 +420,10 @@ const App = () => {
                     <span className="project-title">{file ? file.name : '새 프로젝트'}</span>
                 </div>
                 <div className="header-right">
-                    {status === 'completed' && (
-                        <span className="status-badge">✅ 분석 완료</span>
-                    )}
+                    {status === 'completed' && <span className="status-badge">✅ 분석 완료</span>}
+                    <ThemeToggle />
                 </div>
-                <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="video/*" />
+                <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="video/*,audio/*" />
             </header>
 
             <RibbonToolbar
@@ -449,12 +440,17 @@ const App = () => {
                 hasCaptions={captions.length > 0}
                 onAddCaption={addCaption}
                 onMergeCaptions={mergeCaptions}
+                onSplitCaption={splitCaption}
                 onToggleInsight={() => setShowInsight(prev => !prev)}
                 showInsight={showInsight}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
                 canUndo={historyIndex > 0}
                 canRedo={historyIndex < captionHistory.length - 1}
+                onToggleStylePanel={() => setShowStylePanel(prev => !prev)}
+                onDetectSilence={detectSilence}
+                onRemoveSilence={removeSilence}
+                silenceCount={silenceSegments.length}
             />
 
             <main className="main-layout">
@@ -469,6 +465,7 @@ const App = () => {
                     handlePause={handlePause}
                     handleEnded={handleEnded}
                     isPlaying={isPlaying}
+                    subtitleStyle={subtitleStyle}
                 />
 
                 <WordChipEditor
@@ -479,6 +476,7 @@ const App = () => {
                     onUpdateCaption={updateCaption}
                     onDeleteCaption={deleteCaption}
                     onMergeCaptions={mergeCaptions}
+                    onSplitCaption={splitCaption}
                     status={status}
                 />
 
@@ -487,6 +485,13 @@ const App = () => {
                     onSeek={seekTo}
                     isVisible={showInsight}
                     onToggle={() => setShowInsight(prev => !prev)}
+                />
+
+                <SubtitleStylePanel
+                    style={subtitleStyle}
+                    onStyleChange={setSubtitleStyle}
+                    isVisible={showStylePanel}
+                    onClose={() => setShowStylePanel(false)}
                 />
             </main>
 
@@ -501,14 +506,13 @@ const App = () => {
                 formatTime={formatTime}
                 onSeek={seekTo}
                 syncOffset={syncOffset}
+                silenceSegments={silenceSegments}
             />
 
-            {/* 프로그레스 오버레이 */}
             <AnimatePresence>
                 <ProgressOverlay status={status} progress={progress} />
             </AnimatePresence>
 
-            {/* Toast 알림 */}
             <Toast toasts={toasts} onRemove={removeToast} />
         </div>
     );
