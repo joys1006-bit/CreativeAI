@@ -1563,3 +1563,134 @@
     font-size: 14px;
     margin-left: 4px;
 }
+
+/* ===== 모바일 반응형 (480px 이하) ===== */
+@media (max-width: 480px) {
+    .app-header {
+        padding: 8px 12px;
+    }
+
+    .app-header h1 {
+        font-size: 14px;
+    }
+
+    .ribbon-toolbar {
+        padding: 0;
+    }
+
+    .ribbon-tabs {
+        gap: 0;
+    }
+
+    .ribbon-tab {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    .ribbon-content {
+        padding: 6px 8px;
+    }
+
+    .tool-btn {
+        padding: 6px 8px;
+        font-size: 11px;
+        gap: 4px;
+    }
+
+    .tool-icon {
+        font-size: 14px;
+    }
+
+    .section-label {
+        font-size: 9px;
+    }
+
+    .main-layout {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .video-area {
+        min-height: 200px;
+        max-height: 280px;
+    }
+
+    .editor-area {
+        max-height: 250px;
+    }
+
+    .chip-item {
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+
+    .time-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+
+    .timeline-footer {
+        height: 80px;
+    }
+
+    .style-panel,
+    .tts-panel,
+    .insight-panel {
+        width: 100%;
+        top: auto;
+        bottom: 0;
+        height: 60vh;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+    }
+
+    .template-gallery {
+        width: 95vw;
+        max-height: 85vh;
+    }
+
+    .template-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .sync-control {
+        font-size: 10px;
+    }
+
+    .mini-btn {
+        padding: 3px 6px;
+        font-size: 10px;
+    }
+}
+
+/* ===== 태블릿 (481px ~ 768px) ===== */
+@media (min-width: 481px) and (max-width: 768px) {
+    .main-layout {
+        flex-direction: column;
+    }
+
+    .video-area {
+        min-height: 300px;
+        max-height: 400px;
+    }
+
+    .editor-area {
+        max-height: 300px;
+    }
+
+    .template-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ===== PWA standalone 모드 ===== */
+@media (display-mode: standalone) {
+    .app-header {
+        padding-top: env(safe-area-inset-top, 0);
+    }
+
+    body {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+}

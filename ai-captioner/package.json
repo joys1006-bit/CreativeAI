@@ -1,0 +1,24 @@
+{
+    "name": "ai-captioner-pro",
+    "version": "1.0.0",
+    "description": "AI Captioner PRO — Whisper + Gemini 하이브리드 자막 편집기",
+    "main": "electron/main.js",
+    "author": "CreativeAI Team",
+    "license": "MIT",
+    "scripts": {
+        "dev": "concurrently \"cd backend && node server.js\" \"cd frontend && npx vite --port 5174\"",
+        "build": "cd frontend && npx vite build",
+        "electron": "electron .",
+        "electron:dev": "concurrently \"cd backend && node server.js\" \"cd frontend && npx vite --port 5174\" \"wait-on http://localhost:5174 && electron .\"",
+        "electron:build": "npm run build && electron-builder --config electron-builder.yml",
+        "electron:build:win": "npm run build && electron-builder --config electron-builder.yml --win",
+        "electron:build:mac": "npm run build && electron-builder --config electron-builder.yml --mac",
+        "electron:build:linux": "npm run build && electron-builder --config electron-builder.yml --linux"
+    },
+    "devDependencies": {
+        "electron": "^33.0.0",
+        "electron-builder": "^25.0.0",
+        "concurrently": "^9.0.0",
+        "wait-on": "^8.0.0"
+    }
+}

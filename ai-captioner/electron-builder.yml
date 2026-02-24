@@ -1,0 +1,55 @@
+appId: com.creativeai.captioner
+productName: AI Captioner PRO
+copyright: Copyright © 2026 CreativeAI
+
+directories:
+  output: release
+  buildResources: electron/icons
+
+files:
+  - backend/**/*
+  - frontend/dist/**/*
+  - electron/**/*
+  - "!**/node_modules/.cache"
+  - "!**/.git"
+
+win:
+  target:
+    - nsis
+    - portable
+  icon: electron/icons/icon.ico
+  artifactName: "AI-Captioner-PRO-${version}-win-${arch}.${ext}"
+
+nsis:
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AI Captioner PRO
+  installerLanguages:
+    - ko-KR
+    - en-US
+
+mac:
+  target:
+    - dmg
+    - zip
+  icon: electron/icons/icon.icns
+  category: public.app-category.video
+  artifactName: "AI-Captioner-PRO-${version}-mac-${arch}.${ext}"
+
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: electron/icons
+  category: AudioVideo
+  artifactName: "AI-Captioner-PRO-${version}-linux-${arch}.${ext}"
+
+extraResources:
+  - from: backend/
+    to: backend/
+    filter:
+      - "**/*"
+      - "!node_modules/.cache"
