@@ -14,6 +14,8 @@ import Toast from './components/Toast';
 import SubtitleStylePanel from './components/SubtitleStylePanel';
 import TtsPanel from './components/TtsPanel';
 import TemplateGallery from './components/TemplateGallery';
+import ShortcutGuide from './components/ShortcutGuide';
+import DropZone from './components/DropZone';
 import { ThemeToggle } from './components/ThemeProvider';
 
 const API_BASE = 'http://localhost:8000';
@@ -65,6 +67,10 @@ const App = () => {
     // --- State: 번역 ---
     const [translatedCaptions, setTranslatedCaptions] = useState(null);
     const [targetLang, setTargetLang] = useState('en');
+
+    // --- State: Sprint 4 ---
+    const [showShortcutGuide, setShowShortcutGuide] = useState(false);
+    const [exportFormat, setExportFormat] = useState('srt');
 
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
@@ -439,6 +445,56 @@ const App = () => {
         addToast(`📐 "${template.templateName}" 템플릿 적용 완료`, 'success');
     }, [addToast]);
 
+    // === 멀티포맷 자막 내보내기 ===
+    const handleExportSubtitle = useCallback((format = 'srt') => {
+        if (captions.length === 0) return addToast('내보낼 자막이 없습니다', 'warning');
+
+        const formatSRTTime = (s) => {
+            const ms = Math.max(0, Math.round(s * 1000));
+            const h = String(Math.floor(ms / 3600000)).padStart(2, '0');
+            const m = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+            const sec = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+            const milli = String(ms % 1000).padStart(3, '0');
+            return `${h}:${m}:${sec},${milli}`;
+        };
+
+        let content, ext, mime;
+        switch (format) {
+            case 'vtt':
+                content = 'WEBVTT\n\n' + captions.map((c, i) =>
+                    `${i + 1}\n${formatSRTTime(c.start).replace(',', '.')} --> ${formatSRTTime(c.end).replace(',', '.')}\n${c.text}\n`
+                ).join('\n');
+                ext = '.vtt'; mime = 'text/vtt';
+                break;
+            case 'txt':
+                content = captions.map(c => c.text).join('\n');
+                ext = '.txt'; mime = 'text/plain';
+                break;
+            default: // srt
+                content = captions.map((c, i) =>
+                    `${i + 1}\n${formatSRTTime(c.start)} --> ${formatSRTTime(c.end)}\n${c.text}\n`
+                ).join('\n');
+                ext = '.srt'; mime = 'text/plain';
+        }
+
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `subtitles${ext}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        addToast(`✅ ${format.toUpperCase()} 자막 내보내기 완료`, 'success');
+    }, [captions, addToast]);
+
+    // === 드래그&드롭 파일 처리 ===
+    const handleFileDrop = useCallback((droppedFile) => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setFile(droppedFile);
+        setPreviewUrl(URL.createObjectURL(droppedFile));
+        addToast(`📁 "${droppedFile.name}" 파일이 로드되었습니다`, 'success');
+    }, [previewUrl, addToast]);
+
     // === 현재 자막 ===
     const currentCaption = captions.find(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
 
@@ -448,127 +504,134 @@ const App = () => {
     };
 
     return (
-        <div className="app-container">
-            <header className="app-header">
-                <div className="brand-section">
-                    <span className="app-logo">AI CAPTIONER PRO</span>
-                    <span className="project-title">{file ? file.name : '새 프로젝트'}</span>
-                </div>
-                <div className="header-right">
-                    {status === 'completed' && <span className="status-badge">✅ 분석 완료</span>}
-                    <ThemeToggle />
-                </div>
-                <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="video/*,audio/*" />
-            </header>
+        <DropZone onFileDrop={handleFileDrop} disabled={status === 'processing'}>
+            <div className="app-container">
+                <header className="app-header">
+                    <div className="brand-section">
+                        <span className="app-logo">AI CAPTIONER PRO</span>
+                        <span className="project-title">{file ? file.name : '새 프로젝트'}</span>
+                    </div>
+                    <div className="header-right">
+                        {status === 'completed' && <span className="status-badge">✅ 분석 완료</span>}
+                        <ThemeToggle />
+                    </div>
+                    <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="video/*,audio/*" />
+                </header>
 
-            <RibbonToolbar
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                onSelectFile={() => fileInputRef.current.click()}
-                onStartAnalysis={handleUpload}
-                onExportVideo={handleExportVideo}
-                onExportSRT={handleExportSRT}
-                status={status}
-                syncOffset={syncOffset}
-                setSyncOffset={setSyncOffset}
-                hasFile={!!file}
-                hasCaptions={captions.length > 0}
-                onAddCaption={addCaption}
-                onMergeCaptions={mergeCaptions}
-                onSplitCaption={splitCaption}
-                onToggleInsight={() => setShowInsight(prev => !prev)}
-                showInsight={showInsight}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                canUndo={historyIndex > 0}
-                canRedo={historyIndex < captionHistory.length - 1}
-                onToggleStylePanel={() => setShowStylePanel(prev => !prev)}
-                onDetectSilence={detectSilence}
-                onRemoveSilence={removeSilence}
-                silenceCount={silenceSegments.length}
-                onToggleTts={() => setShowTtsPanel(prev => !prev)}
-                onToggleTemplate={() => setShowTemplateGallery(prev => !prev)}
-                onTranslate={translateCaptions}
-                targetLang={targetLang}
-                setTargetLang={setTargetLang}
-                hasTranslation={!!translatedCaptions}
-            />
-
-            <main className="main-layout">
-                <VideoStage
-                    videoRef={videoRef}
-                    previewUrl={previewUrl}
-                    currentCaption={currentCaption}
-                    togglePlay={togglePlay}
-                    handleTimeUpdate={handleTimeUpdate}
-                    handleLoadedMetadata={handleLoadedMetadata}
-                    handlePlay={handlePlay}
-                    handlePause={handlePause}
-                    handleEnded={handleEnded}
-                    isPlaying={isPlaying}
-                    subtitleStyle={subtitleStyle}
-                />
-
-                <WordChipEditor
-                    captions={captions}
-                    currentTime={currentTime}
+                <RibbonToolbar
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    onSelectFile={() => fileInputRef.current.click()}
+                    onStartAnalysis={handleUpload}
+                    onExportVideo={handleExportVideo}
+                    onExportSRT={handleExportSRT}
+                    status={status}
                     syncOffset={syncOffset}
-                    onSeek={seekTo}
-                    onUpdateCaption={updateCaption}
-                    onDeleteCaption={deleteCaption}
+                    setSyncOffset={setSyncOffset}
+                    hasFile={!!file}
+                    hasCaptions={captions.length > 0}
+                    onAddCaption={addCaption}
                     onMergeCaptions={mergeCaptions}
                     onSplitCaption={splitCaption}
-                    status={status}
+                    onToggleInsight={() => setShowInsight(prev => !prev)}
+                    showInsight={showInsight}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
+                    canUndo={historyIndex > 0}
+                    canRedo={historyIndex < captionHistory.length - 1}
+                    onToggleStylePanel={() => setShowStylePanel(prev => !prev)}
+                    onDetectSilence={detectSilence}
+                    onRemoveSilence={removeSilence}
+                    silenceCount={silenceSegments.length}
+                    onToggleTts={() => setShowTtsPanel(prev => !prev)}
+                    onToggleTemplate={() => setShowTemplateGallery(prev => !prev)}
+                    onTranslate={translateCaptions}
+                    targetLang={targetLang}
+                    setTargetLang={setTargetLang}
+                    hasTranslation={!!translatedCaptions}
                 />
 
-                <AiInsightPanel
-                    analysis={aiAnalysis}
-                    onSeek={seekTo}
-                    isVisible={showInsight}
-                    onToggle={() => setShowInsight(prev => !prev)}
-                />
+                <main className="main-layout">
+                    <VideoStage
+                        videoRef={videoRef}
+                        previewUrl={previewUrl}
+                        currentCaption={currentCaption}
+                        togglePlay={togglePlay}
+                        handleTimeUpdate={handleTimeUpdate}
+                        handleLoadedMetadata={handleLoadedMetadata}
+                        handlePlay={handlePlay}
+                        handlePause={handlePause}
+                        handleEnded={handleEnded}
+                        isPlaying={isPlaying}
+                        subtitleStyle={subtitleStyle}
+                    />
 
-                <SubtitleStylePanel
-                    style={subtitleStyle}
-                    onStyleChange={setSubtitleStyle}
-                    isVisible={showStylePanel}
-                    onClose={() => setShowStylePanel(false)}
-                />
+                    <WordChipEditor
+                        captions={captions}
+                        currentTime={currentTime}
+                        syncOffset={syncOffset}
+                        onSeek={seekTo}
+                        onUpdateCaption={updateCaption}
+                        onDeleteCaption={deleteCaption}
+                        onMergeCaptions={mergeCaptions}
+                        onSplitCaption={splitCaption}
+                        status={status}
+                    />
 
-                <TtsPanel
-                    isVisible={showTtsPanel}
-                    onClose={() => setShowTtsPanel(false)}
+                    <AiInsightPanel
+                        analysis={aiAnalysis}
+                        onSeek={seekTo}
+                        isVisible={showInsight}
+                        onToggle={() => setShowInsight(prev => !prev)}
+                    />
+
+                    <SubtitleStylePanel
+                        style={subtitleStyle}
+                        onStyleChange={setSubtitleStyle}
+                        isVisible={showStylePanel}
+                        onClose={() => setShowStylePanel(false)}
+                    />
+
+                    <TtsPanel
+                        isVisible={showTtsPanel}
+                        onClose={() => setShowTtsPanel(false)}
+                        captions={captions}
+                        currentCaption={currentCaption}
+                    />
+
+                    <TemplateGallery
+                        isVisible={showTemplateGallery}
+                        onClose={() => setShowTemplateGallery(false)}
+                        onApplyTemplate={applyTemplate}
+                    />
+                </main>
+
+                <Timeline
+                    currentTime={currentTime}
+                    duration={duration}
+                    zoomLevel={zoomLevel}
+                    setZoomLevel={setZoomLevel}
                     captions={captions}
-                    currentCaption={currentCaption}
+                    waveform={waveform}
+                    togglePlay={togglePlay}
+                    formatTime={formatTime}
+                    onSeek={seekTo}
+                    syncOffset={syncOffset}
+                    silenceSegments={silenceSegments}
                 />
 
-                <TemplateGallery
-                    isVisible={showTemplateGallery}
-                    onClose={() => setShowTemplateGallery(false)}
-                    onApplyTemplate={applyTemplate}
+                <AnimatePresence>
+                    <ProgressOverlay status={status} progress={progress} />
+                </AnimatePresence>
+
+                <Toast toasts={toasts} onRemove={removeToast} />
+
+                <ShortcutGuide
+                    isVisible={showShortcutGuide}
+                    onClose={() => setShowShortcutGuide(false)}
                 />
-            </main>
-
-            <Timeline
-                currentTime={currentTime}
-                duration={duration}
-                zoomLevel={zoomLevel}
-                setZoomLevel={setZoomLevel}
-                captions={captions}
-                waveform={waveform}
-                togglePlay={togglePlay}
-                formatTime={formatTime}
-                onSeek={seekTo}
-                syncOffset={syncOffset}
-                silenceSegments={silenceSegments}
-            />
-
-            <AnimatePresence>
-                <ProgressOverlay status={status} progress={progress} />
-            </AnimatePresence>
-
-            <Toast toasts={toasts} onRemove={removeToast} />
-        </div>
+            </div>
+        </DropZone>
     );
 };
 
