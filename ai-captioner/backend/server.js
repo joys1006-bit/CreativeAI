@@ -202,6 +202,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
         sentimentScore: 0.5,
         highlights: [],
         waveform: [],
+        progress: { stage: 'uploading', updatedAt: Date.now() },
         createdAt: new Date().toISOString()
     };
     jobs[jobId] = job;

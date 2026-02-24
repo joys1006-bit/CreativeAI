@@ -1,22 +1,26 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * 워드칩 에디터 컴포넌트
  * - 자막 편집, 삭제 버튼, 자동 스크롤
- * - 합치기 선택 모드
+ * - FIX: 자동 스크롤을 throttle하여 성능 최적화
  */
 const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCaption, onDeleteCaption, onMergeCaptions, status }) => {
     const activeChipRef = useRef(null);
     const listRef = useRef(null);
+    const lastScrollTime = useRef(0);
 
     const formatTime = (s) => {
         const date = new Date(s * 1000);
         return date.toISOString().substr(14, 5);
     };
 
-    // 현재 재생 중인 칩으로 자동 스크롤
+    // FIX: 자동 스크롤을 500ms마다만 실행 (throttle)
     useEffect(() => {
+        const now = Date.now();
+        if (now - lastScrollTime.current < 500) return;
+
         if (activeChipRef.current && listRef.current) {
             const container = listRef.current;
             const chip = activeChipRef.current;
@@ -25,6 +29,7 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
 
             if (chipRect.top < containerRect.top || chipRect.bottom > containerRect.bottom) {
                 chip.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                lastScrollTime.current = now;
             }
         }
     }, [currentTime, captions]);

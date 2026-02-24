@@ -44,6 +44,7 @@ const App = () => {
     // --- Refs ---
     const fileInputRef = useRef(null);
     const videoRef = useRef(null);
+    const historyDebounceRef = useRef(null);
 
     // === Toast 헬퍼 ===
     const addToast = useCallback((message, type = 'info') => {
@@ -59,42 +60,54 @@ const App = () => {
     }, []);
 
     // === Undo/Redo 헬퍼 ===
+    // FIX: pushHistory를 useRef 기반으로 변경하여 stale closure 방지
+    const historyRef = useRef({ captionHistory: [], historyIndex: -1 });
+
+    // historyRef를 state와 동기화
+    useEffect(() => {
+        historyRef.current = { captionHistory, historyIndex };
+    }, [captionHistory, historyIndex]);
+
+    // FIX: 디바운스된 히스토리 저장 (매 키입력이 아닌 500ms 쉬면 저장)
     const pushHistory = useCallback((newCaptions) => {
-        setCaptionHistory(prev => {
-            const sliced = prev.slice(0, historyIndex + 1);
-            return [...sliced, JSON.parse(JSON.stringify(newCaptions))];
-        });
-        setHistoryIndex(prev => prev + 1);
-    }, [historyIndex]);
+        if (historyDebounceRef.current) clearTimeout(historyDebounceRef.current);
+        historyDebounceRef.current = setTimeout(() => {
+            const { captionHistory: hist, historyIndex: idx } = historyRef.current;
+            const sliced = hist.slice(0, idx + 1);
+            const newHistory = [...sliced, JSON.parse(JSON.stringify(newCaptions))];
+            setCaptionHistory(newHistory);
+            setHistoryIndex(newHistory.length - 1);
+        }, 500);
+    }, []);
 
     const handleUndo = useCallback(() => {
-        if (historyIndex > 0) {
-            const prevIndex = historyIndex - 1;
+        if (historyRef.current.historyIndex > 0) {
+            const prevIndex = historyRef.current.historyIndex - 1;
             setHistoryIndex(prevIndex);
-            setCaptions(JSON.parse(JSON.stringify(captionHistory[prevIndex])));
+            setCaptions(JSON.parse(JSON.stringify(historyRef.current.captionHistory[prevIndex])));
             addToast('되돌리기 완료', 'info');
         }
-    }, [historyIndex, captionHistory, addToast]);
+    }, [addToast]);
 
     const handleRedo = useCallback(() => {
-        if (historyIndex < captionHistory.length - 1) {
-            const nextIndex = historyIndex + 1;
+        const { captionHistory: hist, historyIndex: idx } = historyRef.current;
+        if (idx < hist.length - 1) {
+            const nextIndex = idx + 1;
             setHistoryIndex(nextIndex);
-            setCaptions(JSON.parse(JSON.stringify(captionHistory[nextIndex])));
+            setCaptions(JSON.parse(JSON.stringify(hist[nextIndex])));
             addToast('다시하기 완료', 'info');
         }
-    }, [historyIndex, captionHistory, addToast]);
+    }, [addToast]);
 
     // === 재생 로직 ===
     const togglePlay = useCallback(() => {
         if (!videoRef.current) return;
         if (videoRef.current.paused) {
             videoRef.current.play();
-            setIsPlaying(true);
         } else {
             videoRef.current.pause();
-            setIsPlaying(false);
         }
+        // isPlaying은 onPlay/onPause 이벤트에서 관리
     }, []);
 
     const seekTo = useCallback((time) => {
@@ -104,6 +117,10 @@ const App = () => {
         }
     }, []);
 
+    // FIX: 비디오 재생 상태를 이벤트 기반으로 동기화
+    const handlePlay = useCallback(() => setIsPlaying(true), []);
+    const handlePause = useCallback(() => setIsPlaying(false), []);
+    const handleEnded = useCallback(() => setIsPlaying(false), []);
     const handleTimeUpdate = () => setCurrentTime(videoRef.current?.currentTime || 0);
     const handleLoadedMetadata = () => setDuration(videoRef.current?.duration || 0);
 
@@ -120,10 +137,37 @@ const App = () => {
         return () => cancelAnimationFrame(animationFrameId);
     }, []);
 
+    // === SRT 내보내기 ===
+    // FIX: handleExportSRT를 키보드 단축키보다 먼저 정의
+    const handleExportSRT = useCallback(() => {
+        if (captions.length === 0) return addToast('자막 데이터가 없습니다', 'warning');
+        const srtContent = captions.map((c, i) => {
+            const formatSRTTime = (s) => {
+                const totalMs = Math.max(0, Math.round(s * 1000));
+                const hours = String(Math.floor(totalMs / 3600000)).padStart(2, '0');
+                const mins = String(Math.floor((totalMs % 3600000) / 60000)).padStart(2, '0');
+                const secs = String(Math.floor((totalMs % 60000) / 1000)).padStart(2, '0');
+                const ms = String(totalMs % 1000).padStart(3, '0');
+                return `${hours}:${mins}:${secs},${ms}`;
+            };
+            return `${i + 1}\n${formatSRTTime(c.start + syncOffset)} --> ${formatSRTTime(c.end + syncOffset)}\n${c.text}\n`;
+        }).join('\n');
+
+        const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${file?.name?.replace(/\.[^.]+$/, '') || 'subtitle'}.srt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        addToast('SRT 파일이 저장되었습니다', 'success');
+    }, [captions, syncOffset, file, addToast]);
+
     // === 키보드 단축키 ===
+    // FIX: handleExportSRT를 deps에 포함
     useEffect(() => {
         const handleKeyDown = (e) => {
-            // textarea 입력 중에는 무시
+            // textarea/input 입력 중에는 무시
             if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
 
             switch (e.code) {
@@ -150,7 +194,6 @@ const App = () => {
                     if (e.ctrlKey || e.metaKey) {
                         e.preventDefault();
                         handleExportSRT();
-                        addToast('SRT 파일이 저장되었습니다', 'success');
                     }
                     break;
                 default:
@@ -160,12 +203,14 @@ const App = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [togglePlay, seekTo, duration, handleUndo, handleRedo, addToast]);
+    }, [togglePlay, seekTo, duration, handleUndo, handleRedo, handleExportSRT]);
 
     // === 파일 처리 ===
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
+            // 이전 previewUrl 해제 (메모리 릭 방지)
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
             setFile(selectedFile);
             setPreviewUrl(URL.createObjectURL(selectedFile));
             setCaptions([]);
@@ -196,7 +241,7 @@ const App = () => {
             addToast('업로드 완료! AI 분석을 시작합니다', 'info');
         } catch (error) {
             console.error(error);
-            addToast('업로드에 실패했습니다: ' + (error.response?.data || error.message), 'error');
+            addToast('업로드에 실패했습니다: ' + (error.response?.data?.error || error.response?.data || error.message), 'error');
             setStatus('idle');
         }
     };
@@ -209,10 +254,19 @@ const App = () => {
             timer = setInterval(async () => {
                 try {
                     pollCount++;
-                    // 진행 단계 시뮬레이션 (백엔드 progress API 없을 때 폴백)
-                    if (pollCount === 3) setProgress({ stage: 'transcribing' });
-                    if (pollCount === 8) setProgress({ stage: 'correcting' });
-                    if (pollCount === 12) setProgress({ stage: 'finalizing' });
+
+                    // FIX: 백엔드 progress API에서 실제 단계 가져오기
+                    try {
+                        const progressRes = await axios.get(`${API_BASE}/progress/${jobId}`);
+                        if (progressRes.data.stage) {
+                            setProgress({ stage: progressRes.data.stage });
+                        }
+                    } catch (_) {
+                        // progress API 미지원 시 폴백 시뮬레이션
+                        if (pollCount === 3) setProgress({ stage: 'transcribing' });
+                        if (pollCount === 8) setProgress({ stage: 'correcting' });
+                        if (pollCount === 12) setProgress({ stage: 'finalizing' });
+                    }
 
                     const res = await axios.get(`${API_BASE}/status/${jobId}`);
                     if (res.data.status === 'COMPLETED') {
@@ -236,7 +290,7 @@ const App = () => {
                         clearInterval(timer);
                         addToast(`✨ 자막 ${segments.length}개 생성 완료!`, 'success');
                     } else if (res.data.status === 'FAILED') {
-                        addToast('분석 실패: ' + res.data.error, 'error');
+                        addToast('분석 실패: ' + (res.data.error || '알 수 없는 오류'), 'error');
                         setStatus('idle');
                         clearInterval(timer);
                     }
@@ -260,53 +314,45 @@ const App = () => {
             setStatus('completed');
             addToast('영상 내보내기 완료!', 'success');
         } catch (e) {
-            addToast('내보내기 실패: ' + e.message, 'error');
+            addToast('내보내기 실패: ' + (e.response?.data?.error || e.message), 'error');
             setStatus('completed');
         }
     };
 
-    const handleExportSRT = useCallback(() => {
-        if (captions.length === 0) return addToast('자막 데이터가 없습니다', 'warning');
-        const srtContent = captions.map((c, i) => {
-            const formatSRTTime = (s) => {
-                const d = new Date(s * 1000);
-                return d.toISOString().substr(11, 8) + ',' + d.toISOString().substr(19, 3);
-            };
-            return `${i + 1}\n${formatSRTTime(c.start + syncOffset)} --> ${formatSRTTime(c.end + syncOffset)}\n${c.text}\n`;
-        }).join('\n');
-
-        const blob = new Blob([srtContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${file?.name || 'subtitle'}.srt`;
-        a.click();
-        addToast('SRT 파일이 저장되었습니다', 'success');
-    }, [captions, syncOffset, file, addToast]);
-
     // === 자막 CRUD ===
+    // FIX: pushHistory를 setCaptions 밖에서 호출
     const updateCaption = useCallback((id, newText) => {
         setCaptions(prev => {
             const updated = prev.map((c, idx) =>
                 (c.id === id || idx === id) ? { ...c, text: newText } : c
             );
-            pushHistory(updated);
             return updated;
+        });
+        // 디바운스된 히스토리
+        setCaptions(current => {
+            pushHistory(current);
+            return current;
         });
     }, [pushHistory]);
 
     const deleteCaption = useCallback((index) => {
         setCaptions(prev => {
             const updated = prev.filter((_, i) => i !== index);
-            pushHistory(updated);
-            addToast('자막이 삭제되었습니다', 'info');
             return updated;
         });
+        // 삭제는 즉시 히스토리
+        setTimeout(() => {
+            setCaptions(current => {
+                pushHistory(current);
+                return current;
+            });
+        }, 0);
+        addToast('자막이 삭제되었습니다', 'info');
     }, [pushHistory, addToast]);
 
     const addCaption = useCallback(() => {
         const newStart = currentTime;
-        const newEnd = Math.min(currentTime + 3, duration);
+        const newEnd = Math.min(currentTime + 3, duration || currentTime + 3);
         const newSegment = {
             id: `seg_new_${Date.now()}`,
             start: newStart,
@@ -315,17 +361,20 @@ const App = () => {
             confidence: 1.0
         };
         setCaptions(prev => {
-            // 시간순으로 삽입
             const updated = [...prev, newSegment].sort((a, b) => a.start - b.start);
-            pushHistory(updated);
-            addToast('새 자막이 추가되었습니다', 'success');
             return updated;
         });
+        setTimeout(() => {
+            setCaptions(current => {
+                pushHistory(current);
+                return current;
+            });
+        }, 0);
+        addToast('새 자막이 추가되었습니다', 'success');
     }, [currentTime, duration, pushHistory, addToast]);
 
     const mergeCaptions = useCallback(() => {
         if (captions.length < 2) return addToast('합칠 자막이 부족합니다', 'warning');
-        // 현재 재생 시간에 있는 자막과 다음 자막을 합침
         const currentIdx = captions.findIndex(c => {
             const start = c.start + syncOffset;
             const end = c.end + syncOffset;
@@ -348,10 +397,15 @@ const App = () => {
             const updated = [...prev];
             updated[currentIdx] = merged;
             updated.splice(currentIdx + 1, 1);
-            pushHistory(updated);
-            addToast('자막 2개가 합쳐졌습니다', 'success');
             return updated;
         });
+        setTimeout(() => {
+            setCaptions(current => {
+                pushHistory(current);
+                return current;
+            });
+        }, 0);
+        addToast('자막 2개가 합쳐졌습니다', 'success');
     }, [captions, currentTime, syncOffset, pushHistory, addToast]);
 
     // === 현재 자막 ===
@@ -411,6 +465,9 @@ const App = () => {
                     togglePlay={togglePlay}
                     handleTimeUpdate={handleTimeUpdate}
                     handleLoadedMetadata={handleLoadedMetadata}
+                    handlePlay={handlePlay}
+                    handlePause={handlePause}
+                    handleEnded={handleEnded}
                     isPlaying={isPlaying}
                 />
 
