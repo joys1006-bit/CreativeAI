@@ -1321,3 +1321,245 @@
 .tool-btn.warning:hover {
     background: rgba(245, 158, 11, 0.2);
 }
+
+/* ===== TTS Panel ===== */
+.tts-panel {
+    position: fixed;
+    right: 0;
+    top: 80px;
+    width: 320px;
+    bottom: 0;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    z-index: 44;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.tts-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tts-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.voice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.voice-card {
+    padding: 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.voice-card.active {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.voice-card:hover {
+    border-color: var(--primary-light);
+}
+
+.voice-name {
+    display: block;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.voice-lang {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+.tts-preview-box {
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.tts-preview-text {
+    font-size: 13px;
+    color: var(--text);
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+}
+
+.tts-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.tts-btn {
+    padding: 8px 14px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.tts-btn:hover {
+    background: var(--primary-dark);
+}
+
+.tts-btn.speaking {
+    background: var(--accent-red);
+}
+
+.tts-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tts-btn.full {
+    width: 100%;
+}
+
+.tts-empty {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 16px 0;
+}
+
+/* ===== Template Gallery ===== */
+.template-gallery {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(600px, 90vw);
+    max-height: 80vh;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    z-index: 60;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+}
+
+.template-categories {
+    display: flex;
+    padding: 8px 16px;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+.template-cat-btn {
+    padding: 6px 12px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.template-cat-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.template-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.template-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.template-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.template-icon {
+    font-size: 24px;
+}
+
+.template-ratio {
+    font-size: 10px;
+    color: white;
+    margin-top: 4px;
+    opacity: 0.7;
+}
+
+.template-info {
+    text-align: center;
+}
+
+.template-name {
+    display: block;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.template-resolution {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+/* ===== 번역 ===== */
+.translate-select {
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.translate-badge {
+    font-size: 14px;
+    margin-left: 4px;
+}

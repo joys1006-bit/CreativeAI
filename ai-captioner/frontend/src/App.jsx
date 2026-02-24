@@ -12,6 +12,8 @@ import ProgressOverlay from './components/ProgressOverlay';
 import AiInsightPanel from './components/AiInsightPanel';
 import Toast from './components/Toast';
 import SubtitleStylePanel from './components/SubtitleStylePanel';
+import TtsPanel from './components/TtsPanel';
+import TemplateGallery from './components/TemplateGallery';
 import { ThemeToggle } from './components/ThemeProvider';
 
 const API_BASE = 'http://localhost:8000';
@@ -53,6 +55,16 @@ const App = () => {
 
     // --- State: 무음 구간 ---
     const [silenceSegments, setSilenceSegments] = useState([]);
+
+    // --- State: TTS ---
+    const [showTtsPanel, setShowTtsPanel] = useState(false);
+
+    // --- State: 템플릿 ---
+    const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+
+    // --- State: 번역 ---
+    const [translatedCaptions, setTranslatedCaptions] = useState(null);
+    const [targetLang, setTargetLang] = useState('en');
 
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
@@ -404,6 +416,29 @@ const App = () => {
         }
     }, [jobId, silenceSegments, addToast]);
 
+    // === 번역 ===
+    const translateCaptions = useCallback(async (lang = targetLang) => {
+        if (!jobId || captions.length === 0) return addToast('먼저 자막을 생성해주세요', 'warning');
+        addToast(`${lang.toUpperCase()}로 번역 중...`, 'info');
+        try {
+            const res = await axios.post(`${API_BASE}/translate`, { jobId, targetLang: lang });
+            setTranslatedCaptions(res.data.segments);
+            setTargetLang(lang);
+            addToast(`✅ ${res.data.segments?.length || 0}개 자막 번역 완료!`, 'success');
+        } catch (e) {
+            addToast('번역 실패: ' + (e.response?.data?.error || e.message), 'error');
+        }
+    }, [jobId, captions, targetLang, addToast]);
+
+    // === 템플릿 적용 ===
+    const applyTemplate = useCallback((template) => {
+        if (template.subtitleStyle) {
+            setSubtitleStyle(prev => ({ ...prev, ...template.subtitleStyle }));
+        }
+        setShowTemplateGallery(false);
+        addToast(`📐 "${template.templateName}" 템플릿 적용 완료`, 'success');
+    }, [addToast]);
+
     // === 현재 자막 ===
     const currentCaption = captions.find(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
 
@@ -451,6 +486,12 @@ const App = () => {
                 onDetectSilence={detectSilence}
                 onRemoveSilence={removeSilence}
                 silenceCount={silenceSegments.length}
+                onToggleTts={() => setShowTtsPanel(prev => !prev)}
+                onToggleTemplate={() => setShowTemplateGallery(prev => !prev)}
+                onTranslate={translateCaptions}
+                targetLang={targetLang}
+                setTargetLang={setTargetLang}
+                hasTranslation={!!translatedCaptions}
             />
 
             <main className="main-layout">
@@ -492,6 +533,19 @@ const App = () => {
                     onStyleChange={setSubtitleStyle}
                     isVisible={showStylePanel}
                     onClose={() => setShowStylePanel(false)}
+                />
+
+                <TtsPanel
+                    isVisible={showTtsPanel}
+                    onClose={() => setShowTtsPanel(false)}
+                    captions={captions}
+                    currentCaption={currentCaption}
+                />
+
+                <TemplateGallery
+                    isVisible={showTemplateGallery}
+                    onClose={() => setShowTemplateGallery(false)}
+                    onApplyTemplate={applyTemplate}
                 />
             </main>
 
