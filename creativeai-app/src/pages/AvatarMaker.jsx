@@ -8,21 +8,31 @@ import './AvatarMaker.css'
 function AvatarMaker() {
     const navigate = useNavigate()
     const [step, setStep] = useState('input')
-    const [styles, setStyles] = useState([
-        { id: 'anime', name: '애니메이션', emoji: '🎨', description: '일본 애니메이션 스타일' },
-        { id: '3d', name: '3D 캐릭터', emoji: '🎲', description: '입체감 있는 3D 모델' },
-        { id: 'pixel', name: '픽셀아트', emoji: '👾', description: '레트로 픽셀 스타일' },
-        { id: 'cartoon', name: '카툰', emoji: '🎭', description: '만화 캐릭터 스타일' },
-        { id: 'realistic', name: '사실적', emoji: '📸', description: '실제 사진 같은 스타일' },
-        { id: 'fantasy', name: '판타지', emoji: '🧙', description: '판타지 세계관' },
-    ])
-    const [selectedStyle, setSelectedStyle] = useState('anime')
+    const [styles, setStyles] = useState([])
+    const [selectedStyle, setSelectedStyle] = useState(null)
     const [uploadedImage, setUploadedImage] = useState(null)
     const [generating, setGenerating] = useState(false)
     const [progress, setProgress] = useState(0)
 
-    const addToHistory = useStore((state) => state.addToHistory)
-    const useCredits = useStore((state) => state.useCredits)
+    const deductCredits = useStore((state) => state.useCredits)
+
+    useEffect(() => {
+        loadStyles()
+    }, [])
+
+    const loadStyles = async () => {
+        try {
+            const response = await apiService.getAvatarStyles()
+            if (response.success) {
+                setStyles(response.data)
+                if (response.data.length > 0) {
+                    setSelectedStyle(response.data[0].id)
+                }
+            }
+        } catch (err) {
+            console.error('Avatar style loading failed:', err)
+        }
+    }
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0]
@@ -58,7 +68,7 @@ function AvatarMaker() {
             )
 
             // 3. 완료 처리
-            useCredits(20)
+            deductCredits(20)
             navigate('/result', {
                 state: {
                     result: {

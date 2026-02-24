@@ -69,7 +69,7 @@ function Login() {
      */
     const handleGoogleLogin = () => {
         // 백엔드 OAuth2 Authorization Endpoint (표준 경로)
-        window.location.href = 'http://localhost:9090/oauth2/authorization/google';
+        window.location.href = '/api/oauth2/authorization/google';
     };
 
     return (

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:9090/api';
+const API_BASE_URL = '/api';
 
 /**
  * ============================================
@@ -187,6 +187,40 @@ class ApiService {
             : `${this.baseURL}/marketplace?limit=${limit}`;
         const result = await this.fetchWithRetry(url);
         return result.data || [];
+    }
+
+    /**
+     * 마켓플레이스 주문 생성 (구매)
+     */
+    async placeOrder(buyerId, creationId, amount) {
+        return await this.fetchWithRetry(`${this.baseURL}/marketplace/orders`, {
+            method: 'POST',
+            body: JSON.stringify({ buyerId, creationId, amount })
+        });
+    }
+
+    /**
+     * 크리에이터 수익 내역 조회
+     */
+    async getEarnings(creatorId) {
+        return await this.fetchWithRetry(`${this.baseURL}/marketplace/earnings/${creatorId}`);
+    }
+
+    /**
+     * 정산 요청
+     */
+    async requestSettlement(creatorId, bankInfo) {
+        return await this.fetchWithRetry(`${this.baseURL}/marketplace/settlements`, {
+            method: 'POST',
+            body: JSON.stringify({ creatorId, bankInfo })
+        });
+    }
+
+    /**
+     * 정산 이력 조회
+     */
+    async getSettlementHistory(creatorId) {
+        return await this.fetchWithRetry(`${this.baseURL}/marketplace/settlements/${creatorId}`);
     }
 
     // ============================================

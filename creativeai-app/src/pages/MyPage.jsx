@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import apiService from '../services/api';
@@ -11,6 +11,15 @@ const MyPage = () => {
     const [creations, setCreations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
+    const [isSettling, setIsSettling] = useState(false); // 정산 요청 모달 상태
+
+    // 정산 데이터 상태
+    const {
+        earnings, setEarnings,
+        setSettlements
+    } = useStore();
+
+    const [bankInfo, setBankInfo] = useState('');
 
     // Form state
     const [formData, setFormData] = useState({
@@ -22,6 +31,7 @@ const MyPage = () => {
 
     useEffect(() => {
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchData = async () => {
@@ -47,6 +57,26 @@ const MyPage = () => {
         }
     };
 
+    const fetchSettlementData = async () => {
+        if (!user?.id) return;
+        try {
+            const earningsData = await apiService.getEarnings(user.id);
+            setEarnings(earningsData.data || []);
+
+            const settlementsData = await apiService.getSettlementHistory(user.id);
+            setSettlements(settlementsData.data || []);
+        } catch (error) {
+            console.error("정산 데이터 조회 실패:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'creator') {
+            fetchSettlementData();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
+
     const handleLogout = async () => {
         try {
             const refreshToken = JSON.parse(localStorage.getItem('creativeai-storage'))?.state?.refreshToken;
@@ -71,6 +101,20 @@ const MyPage = () => {
         } catch (error) {
             console.error("Update failed:", error);
             alert('업데이트 실패: ' + error.message);
+        }
+    };
+
+    const handleSettlementRequest = async (e) => {
+        e.preventDefault();
+        if (!bankInfo) return alert('계좌 정보를 입력해주세요.');
+
+        try {
+            await apiService.requestSettlement(user.id, bankInfo);
+            alert('정산 요청이 완료되었습니다.');
+            setIsSettling(false);
+            fetchSettlementData(); // 데이터 갱신
+        } catch (error) {
+            alert('정산 요청 실패: ' + error.message);
         }
     };
 
@@ -164,6 +208,12 @@ const MyPage = () => {
                         >
                             ❤️ 좋아요
                         </button>
+                        <button
+                            className={`tab-btn ${activeTab === 'creator' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('creator')}
+                        >
+                            💰 수익 현황
+                        </button>
                     </div>
 
                     <div className="tab-content">
@@ -200,6 +250,49 @@ const MyPage = () => {
                             <div className="empty-state">
                                 <div className="empty-icon">❤️</div>
                                 <p>좋아요한 작품이 없습니다.</p>
+                            </div>
+                        )}
+                        {activeTab === 'creator' && (
+                            <div className="creator-dashboard">
+                                <div className="earning-summary glass-panel">
+                                    <div className="summary-item">
+                                        <span className="label">총 누적 수익</span>
+                                        <span className="value">₩ {earnings.reduce((sum, e) => sum + e.netEarning, 0).toLocaleString()}</span>
+                                    </div>
+                                    <div className="summary-item highlight">
+                                        <span className="label">정산 가능 금액</span>
+                                        <span className="value">₩ {earnings.filter(e => e.status === 'ELIGIBLE').reduce((sum, e) => sum + e.netEarning, 0).toLocaleString()}</span>
+                                    </div>
+                                    <button
+                                        className="btn-settle"
+                                        onClick={() => setIsSettling(true)}
+                                        disabled={earnings.filter(e => e.status === 'ELIGIBLE').length === 0}
+                                    >
+                                        정산 신청하기
+                                    </button>
+                                </div>
+
+                                <div className="history-section">
+                                    <h3>정산 및 수익 내역</h3>
+                                    <div className="earnings-list">
+                                        {earnings.length === 0 ? (
+                                            <p className="no-data">아직 발생한 수익이 없습니다.</p>
+                                        ) : (
+                                            earnings.map(e => (
+                                                <div key={e.id} className="earning-item">
+                                                    <div className="earning-info">
+                                                        <span className="earning-date">{new Date(e.createdAt).toLocaleDateString()}</span>
+                                                        <span className="earning-title">작품 판매 수익</span>
+                                                    </div>
+                                                    <div className="earning-amount">
+                                                        <span className={`status-badge ${e.status.toLowerCase()}`}>{e.status}</span>
+                                                        <span className="amount">+ ₩{e.netEarning.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -241,6 +334,40 @@ const MyPage = () => {
                                 </button>
                                 <button type="submit" className="btn-save">
                                     저장하기
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Settlement Modal */}
+            {isSettling && (
+                <div className="modal-overlay" onClick={() => setIsSettling(false)}>
+                    <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>정산 신청</h2>
+                            <button className="btn-close" onClick={() => setIsSettling(false)}>✕</button>
+                        </div>
+                        <form onSubmit={handleSettlementRequest}>
+                            <div className="form-group">
+                                <label className="form-label">지급 계좌 정보</label>
+                                <textarea
+                                    className="form-input"
+                                    rows="3"
+                                    placeholder="은행명, 계좌번호, 예금주를 입력해주세요."
+                                    value={bankInfo}
+                                    onChange={e => setBankInfo(e.target.value)}
+                                    required
+                                />
+                                <p className="form-hint">정산은 매월 1일 일괄 지급됩니다.</p>
+                            </div>
+                            <div className="modal-actions">
+                                <button type="button" className="btn-cancel" onClick={() => setIsSettling(false)}>
+                                    취소
+                                </button>
+                                <button type="submit" className="btn-save">
+                                    신청하기
                                 </button>
                             </div>
                         </form>

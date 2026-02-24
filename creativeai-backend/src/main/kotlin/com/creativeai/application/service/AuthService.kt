@@ -3,7 +3,6 @@ package com.creativeai.application.service
 import com.creativeai.adapter.output.persistence.*
 import com.creativeai.domain.user.*
 import java.time.LocalDateTime
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
@@ -20,13 +19,16 @@ import reactor.core.publisher.Mono
  * - OAuth 로그인 처리
  */
 @Service
-class AuthService {
-
-        @Autowired lateinit var userRepository: UserR2dbcRepository
-        @Autowired lateinit var refreshTokenRepository: RefreshTokenR2dbcRepository
-        @Autowired lateinit var oauthAccountRepository: UserOAuthAccountR2dbcRepository
-        @Autowired lateinit var jwtService: JwtService
-        @Autowired lateinit var passwordEncoder: PasswordEncoder
+class AuthService(
+        private val userRepository: UserR2dbcRepository,
+        private val refreshTokenRepository: RefreshTokenR2dbcRepository,
+        private val oauthAccountRepository: UserOAuthAccountR2dbcRepository,
+        private val jwtService: JwtService,
+        private val passwordEncoder: PasswordEncoder
+) {
+        // userRepository를 public으로 노출 (AuthController에서 사용 중)
+        val userRepo: UserR2dbcRepository
+                get() = userRepository
 
         /**
          * 회원가입 (이메일/비밀번호)

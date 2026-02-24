@@ -11,8 +11,8 @@ function extractAudio(videoPath, audioPath) {
         ffmpeg(videoPath)
             .toFormat('wav')
             .audioCodec('pcm_s16le')
-            .audioFrequency(16000)
-            .audioChannels(1)
+            .audioFrequency(16000) // Force 16kHz to prevent AI drift
+            .audioChannels(1) // Mono
             .on('end', () => {
                 console.log('Audio extraction finished');
                 resolve();

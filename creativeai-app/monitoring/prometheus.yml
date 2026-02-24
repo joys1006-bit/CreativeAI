@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'creativeai-backend'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['backend:8080']
+
+  - job_name: 'mysql-exporter'
+    static_configs:
+      - targets: ['mysql:3306'] # 실제로는 mysqld-exporter 등을 별도로 운영해야 함

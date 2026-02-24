@@ -42,3 +42,11 @@ creativeai-backend/*.class
 # Environment
 .env
 .env.local
+
+# Large Files & Binaries
+*.exe
+*.mp4
+*.wav
+ai-captioner/backend/uploads/
+ai-captioner/backend/jobs.json
+creativeai-backend/*.log

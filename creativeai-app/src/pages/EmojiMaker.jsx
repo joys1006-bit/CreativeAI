@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import apiService from '../services/api'
 import useStore from '../store/store'
+import GlassCard from '../components/GlassCard'
+import PremiumButton from '../components/PremiumButton'
 import './EmojiMaker.css'
 
 function EmojiMaker() {
@@ -12,13 +14,9 @@ function EmojiMaker() {
     const [selectedStyle, setSelectedStyle] = useState(null)
     const [uploadedImage, setUploadedImage] = useState(null)
     const [progress, setProgress] = useState(0)
-    const [error, setError] = useState(null)
-    const [generationId, setGenerationId] = useState(null)
 
     // Zustand Store
-    const addToHistory = useStore((state) => state.addToHistory)
-    const useCredits = useStore((state) => state.useCredits)
-    const clearCurrentWork = useStore((state) => state.clearCurrentWork)
+    const deductCredits = useStore((state) => state.useCredits)
 
     useEffect(() => {
         loadStyles()
@@ -34,8 +32,7 @@ function EmojiMaker() {
                 }
             }
         } catch (err) {
-            console.error('스타일 로드 실패:', err)
-            setError('스타일 정보를 불러오는데 실패했습니다.')
+            console.error('Style loading failed:', err)
         }
     }
 
@@ -52,8 +49,8 @@ function EmojiMaker() {
     }
 
     const handleGenerate = async () => {
-        if (!selectedStyle) {
-            alert('스타일을 선택해주세요!')
+        if (!selectedStyle || !uploadedImage) {
+            alert('이미지와 스타일을 선택해주세요!')
             return
         }
 
@@ -61,93 +58,75 @@ function EmojiMaker() {
             setStep('generating')
             setProgress(0)
 
-            const response = await apiService.generateEmoji(
-                uploadedImage || '',
-                selectedStyle,
-                'single'
+            // 1. 생성 요청 (실제 백엔드 AI 모델 호출)
+            console.log('[Emoji] Starting generation with style:', selectedStyle);
+            const initialResponse = await apiService.generateEmoji(uploadedImage, selectedStyle)
+            const generationId = initialResponse.id
+
+            // 2. 폴링으로 상태 확인 (실시간 진행률 갱신)
+            const finalResult = await apiService.pollGenerationStatus(
+                generationId,
+                'emoji',
+                (currentProgress) => {
+                    setProgress(currentProgress)
+                }
             )
 
-            if (response.success) {
-                setGenerationId(response.data.id)
-                // Start polling
-                const pollId = setInterval(async () => {
-                    try {
-                        const statusRes = await apiService.getEmojiGenerationStatus(response.data.id)
-                        if (statusRes.success) {
-                            setProgress(statusRes.data.progress)
-                            if (statusRes.data.status === 'completed') {
-                                clearInterval(pollId)
-                                useCredits(10)
-                                navigate('/result', { state: { result: statusRes.data } })
-                            } else if (statusRes.data.status === 'failed') {
-                                clearInterval(pollId)
-                                setError('생성 실패')
-                                setStep('style')
-                            }
-                        }
-                    } catch (pollErr) {
-                        console.error('Polling error', pollErr)
-                        clearInterval(pollId)
-                        setError('상태 조회 실패')
-                        setStep('style')
+            // 3. 완료 시 결과 페이지로 이동 (카드 소진 및 결과 전달)
+            deductCredits(10)
+            navigate('/result', {
+                state: {
+                    result: {
+                        ...finalResult,
+                        style_name: styles.find(s => s.id === selectedStyle)?.name,
+                        created_at: new Date().toISOString()
                     }
-                }, 1000)
-            } else {
-                setError(response.message || '생성 실패')
-                setStep('style')
-            }
+                }
+            })
+
         } catch (err) {
-            console.error('Generate error:', err)
-            setError('생성 요청 중 오류가 발생했습니다.')
+            console.error('Emoji generation failed:', err)
+            // setError 없이 알림만 함
+            alert('이모지 생성 중 오류가 발생했습니다.')
             setStep('style')
         }
     }
 
-    // Animation Variants
-    const pageVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -20 }
-    }
-
     return (
-        <div className="emoji-maker">
-            <header className="header glass-effect">
+        <div className="emoji-maker-container">
+            <header className="home-header">
                 <motion.button
-                    className="back-btn"
+                    className="back-btn-modern"
                     onClick={() => navigate(-1)}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                 >←</motion.button>
-                <h2>이모티콘 만들기</h2>
+                <h2 className="page-title">Emoji Lab</h2>
                 <div style={{ width: 40 }}></div>
             </header>
 
             <AnimatePresence mode="wait">
                 {step === 'input' && (
                     <motion.main
-                        className="content"
+                        className="maker-content"
                         key="input"
-                        variants={pageVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
                     >
                         <div className="input-options">
-                            <h3>어떻게 만들까요?</h3>
+                            <h3 className="section-title">새로운 영감의 시작</h3>
 
-                            <motion.label
-                                htmlFor="photo-upload"
-                                className="option-card glass-card"
-                                whileHover={{ scale: 1.02, y: -5 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <div className="option-icon">📷</div>
-                                <div className="option-text">
-                                    <div className="option-title">사진으로 만들기</div>
-                                    <div className="option-subtitle">갤러리에서 선택</div>
-                                </div>
-                            </motion.label>
+                            <label htmlFor="photo-upload" className="full-width-label">
+                                <GlassCard className="option-card-premium" delay={0.1}>
+                                    <div className="option-visual photo-mode">📷</div>
+                                    <div className="option-info">
+                                        <h4>사진으로 만들기</h4>
+                                        <p>당신의 얼굴이나 사물을 AI 이모티콘으로 변환합니다.</p>
+                                    </div>
+                                    <div className="arrow-indicator">→</div>
+                                </GlassCard>
+                            </label>
                             <input
                                 id="photo-upload"
                                 type="file"
@@ -156,129 +135,94 @@ function EmojiMaker() {
                                 style={{ display: 'none' }}
                             />
 
-                            <motion.button
-                                className="option-card glass-card"
-                                onClick={() => alert('텍스트 입력 기능은 곧 출시됩니다!')}
-                                whileHover={{ scale: 1.02, y: -5 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <div className="option-icon">✍️</div>
-                                <div className="option-text">
-                                    <div className="option-title">텍스트로 만들기</div>
-                                    <div className="option-subtitle">설명을 입력하세요</div>
-                                </div>
-                            </motion.button>
-
-                            <motion.button
-                                className="option-card glass-card"
-                                onClick={() => alert('리믹스 기능은 곧 출시됩니다!')}
-                                whileHover={{ scale: 1.02, y: -5 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                <div className="option-icon">🔄</div>
-                                <div className="option-text">
-                                    <div className="option-title">기존 리믹스하기</div>
-                                    <div className="option-subtitle">인기 이모티콘 변형</div>
-                                </div>
-                            </motion.button>
+                            <div onClick={() => alert('Coming soon!')} className="full-width-label">
+                                <GlassCard className="option-card-premium" delay={0.2}>
+                                    <div className="option-visual text-mode">✍️</div>
+                                    <div className="option-info">
+                                        <h4>텍스트로 만들기</h4>
+                                        <p>상상 속의 이미지를 글로 적어보세요.</p>
+                                    </div>
+                                    <div className="arrow-indicator">→</div>
+                                </GlassCard>
+                            </div>
                         </div>
                     </motion.main>
                 )}
 
                 {step === 'style' && (
                     <motion.main
-                        className="content"
+                        className="maker-content"
                         key="style"
-                        variants={pageVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
                     >
                         {uploadedImage && (
-                            <div className="preview-image-container glass-card">
-                                <img src={uploadedImage} alt="Uploaded" className="preview-img" />
-                                <button className="remove-btn" onClick={() => setUploadedImage(null)}>✕</button>
-                            </div>
+                            <GlassCard className="preview-showcase" hover={false} delay={0.1}>
+                                <img src={uploadedImage} alt="Preview" className="showcase-img" />
+                                <button className="close-btn-mini" onClick={() => setUploadedImage(null)}>✕</button>
+                            </GlassCard>
                         )}
 
-                        <h3>스타일 선택</h3>
-                        <div className="style-grid">
-                            {styles.map(style => (
-                                <motion.div
+                        <h3 className="section-title">스타일 큐레이션</h3>
+                        <div className="premium-style-grid">
+                            {styles.map((style, idx) => (
+                                <GlassCard
                                     key={style.id}
-                                    className={`style-card glass-card ${selectedStyle === style.id ? 'active' : ''}`}
+                                    className={`style-pick-card ${selectedStyle === style.id ? 'active' : ''}`}
                                     onClick={() => setSelectedStyle(style.id)}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    layoutId={`style-${style.id}`}
+                                    delay={idx * 0.05}
                                 >
-                                    <div className="style-emoji">{style.emoji}</div>
-                                    <div className="style-name">{style.name}</div>
-                                </motion.div>
+                                    <div className="style-emoji-large">{style.emoji}</div>
+                                    <span className="style-label-small">{style.name}</span>
+                                </GlassCard>
                             ))}
                         </div>
 
-                        <div className="generation-options glass-card">
-                            <h4>생성 옵션</h4>
-                            <div className="radio-group">
-                                <label className="radio-option">
-                                    <input type="radio" name="genType" value="single" defaultChecked />
-                                    <span>단일 (10 크레딧)</span>
-                                </label>
-                                <label className="radio-option">
-                                    <input type="radio" name="genType" value="pack8" />
-                                    <span>팩 8개 (50 크레딧)</span>
-                                </label>
-                            </div>
+                        <div className="creation-footer">
+                            <PremiumButton
+                                variant="primary"
+                                onClick={handleGenerate}
+                                disabled={!selectedStyle}
+                                fullWidth
+                            >
+                                ✨ AI 이모티콘 생성하기 (10💎)
+                            </PremiumButton>
                         </div>
-
-                        <motion.button
-                            className="btn-primary btn-large"
-                            onClick={handleGenerate}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            disabled={!selectedStyle}
-                        >
-                            <span className="btn-icon">✨</span>
-                            생성하기 (10 크레딧)
-                        </motion.button>
                     </motion.main>
                 )}
 
                 {step === 'generating' && (
                     <motion.main
-                        className="content center-content"
+                        className="maker-content center-focus"
                         key="generating"
-                        variants={pageVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                     >
-                        <div className="generating-visual">
+                        <div className="ai-brain-animation">
                             <motion.div
-                                className="gen-emoji"
+                                className="core-icon"
                                 animate={{
-                                    rotate: [0, 10, -10, 0],
-                                    scale: [1, 1.1, 1]
+                                    scale: [1, 1.1, 1],
+                                    filter: ["hue-rotate(0deg)", "hue-rotate(90deg)", "hue-rotate(0deg)"]
                                 }}
-                                transition={{ repeat: Infinity, duration: 2 }}
+                                transition={{ repeat: Infinity, duration: 3 }}
                             >
-                                🎨
+                                🧪
                             </motion.div>
-                            <div className="ripple"></div>
+                            <div className="orbit-decoration"></div>
                         </div>
-                        <h2>AI가 그림을 그리고 있어요...</h2>
-                        <p>잠시만 기다려주세요!</p>
+                        <h2 className="generating-title">AI가 당신의 상상을 그리는 중...</h2>
 
-                        <div className="progress-container glass-card">
-                            <div className="progress-bar">
+                        <div className="premium-progress-wrapper">
+                            <div className="progress-track">
                                 <motion.div
-                                    className="progress-fill"
+                                    className="progress-glow"
                                     initial={{ width: 0 }}
                                     animate={{ width: `${progress}%` }}
                                 />
                             </div>
-                            <div className="progress-text">{progress}%</div>
+                            <span className="progress-percent">{progress}%</span>
                         </div>
                     </motion.main>
                 )}

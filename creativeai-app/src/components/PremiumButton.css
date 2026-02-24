@@ -1,0 +1,66 @@
+.premium-btn {
+    position: relative;
+    padding: 12px 24px;
+    border-radius: var(--radius-full, 9999px);
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.premium-btn.w-full {
+    width: 100%;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    color: white;
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+}
+
+.btn-accent {
+    background: var(--accent-gradient);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 118, 117, 0.3);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+}
+
+.btn-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.4),
+            transparent);
+    transform: skewX(-20deg);
+}
+
+.premium-btn:hover .btn-shine {
+    animation: shine 0.8s ease-in-out;
+}
+
+@keyframes shine {
+    100% {
+        left: 150%;
+    }
+}
+
+.premium-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}

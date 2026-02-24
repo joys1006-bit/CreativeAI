@@ -14,7 +14,7 @@ import { persist } from 'zustand/middleware'
  */
 const useStore = create(
     persist(
-        (set, get) => ({
+        (set) => ({
             // ============================================
             // 인증 상태
             // ============================================
@@ -42,6 +42,13 @@ const useStore = create(
                 selectedStyle: 'kakao',
                 generationId: null,
             },
+
+            // ============================================
+            // 마켓플레이스 및 정산 상태 (사업 기획 고도화)
+            // ============================================
+            earnings: [],                  // 수익 내역
+            settlements: [],               // 정산 요청 내역
+            subscription: null,            // 현재 구독 정보
 
             // ============================================
             // UI 상태
@@ -137,6 +144,17 @@ const useStore = create(
             setError: (error) => set({ error }),
 
             clearError: () => set({ error: null }),
+
+            // ============================================
+            // 정산 및 구독 관련 액션
+            // ============================================
+            setEarnings: (earnings) => set({ earnings }),
+            setSettlements: (settlements) => set({ settlements }),
+            setSubscription: (subscription) => set({ subscription }),
+
+            updateEarningStatus: (earningId, newStatus) => set((state) => ({
+                earnings: state.earnings.map(e => e.id === earningId ? { ...e, status: newStatus } : e)
+            })),
         }),
         {
             name: 'creativeai-storage',

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import useStore from '../store/store'
 import apiService from '../services/api'
 import Navbar from '../components/Navbar'
 import './Marketplace.css'
@@ -134,6 +135,30 @@ function Marketplace() {
 }
 
 function MarketplaceCard({ item, index }) {
+    const navigate = useNavigate()
+    const { user, credits, setCredits } = useStore()
+    const [isBuying, setIsBuying] = useState(false)
+
+    const handleBuy = async (e) => {
+        e.stopPropagation()
+        if (!user) return navigate('/login')
+        if (credits < item.price) return alert('크레딧이 부족합니다.')
+
+        if (!window.confirm(`'${item.title}' 자산을 ${item.price} CR에 구매하시겠습니까?`)) return
+
+        setIsBuying(true)
+        try {
+            await apiService.placeOrder(user.id, item.id, item.price)
+            setCredits(credits - item.price)
+            alert('구매가 완료되었습니다! 내 보관함에서 확인하실 수 있습니다.')
+        } catch (error) {
+            console.error('Purchase failed:', error)
+            alert('구매 실패: ' + (error.message || '알 수 없는 오류'))
+        } finally {
+            setIsBuying(false)
+        }
+    }
+
     return (
         <motion.div
             className="marketplace-card"
@@ -157,7 +182,13 @@ function MarketplaceCard({ item, index }) {
                     <div className="price-tag">
                         {item.price === 0 ? 'FREE' : `${item.price} CR`}
                     </div>
-                    <button className="buy-btn">구매하기</button>
+                    <button
+                        className="buy-btn"
+                        onClick={handleBuy}
+                        disabled={isBuying}
+                    >
+                        {isBuying ? '처리 중...' : '구매하기'}
+                    </button>
                 </div>
             </div>
         </motion.div>

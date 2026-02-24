@@ -7,12 +7,12 @@ services:
     container_name: creativeai-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: creativeai_root_2024
-      MYSQL_DATABASE: creativeai_db
-      MYSQL_USER: creativeai_user
-      MYSQL_PASSWORD: creativeai_pass_2024
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
@@ -26,6 +26,13 @@ services:
       retries: 5
     networks:
       - creativeai-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 256M
 
   # 2. Backend Service (Spring Boot)
   backend:
@@ -35,16 +42,25 @@ services:
     container_name: creativeai-backend
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     environment:
-      SPRING_R2DBC_URL: r2dbc:mysql://mysql:3306/creativeai_db
-      SPRING_R2DBC_USERNAME: creativeai_user
-      SPRING_R2DBC_PASSWORD: creativeai_pass_2024
+      SPRING_R2DBC_URL: r2dbc:mysql://mysql:3306/${MYSQL_DATABASE}
+      SPRING_R2DBC_USERNAME: ${MYSQL_USER}
+      SPRING_R2DBC_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVER_PORT: 8080
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - creativeai-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 512M
 
   # 3. Frontend Service (React + Nginx)
   frontend:
@@ -54,11 +70,18 @@ services:
     container_name: creativeai-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       - backend
     networks:
       - creativeai-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          memory: 128M
 
   # 4. Optional: phpMyAdmin
   phpmyadmin:
@@ -69,16 +92,50 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: creativeai_root_2024
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "8081:80"
+      - "${PMA_PORT:-8081}:80"
     depends_on:
       - mysql
     networks:
       - creativeai-network
 
+  # 5. Monitoring Service (Prometheus)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: creativeai-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - creativeai-network
+
+  # 6. Visualization Service (Grafana)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: creativeai-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - creativeai-network
+
 volumes:
   mysql_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:

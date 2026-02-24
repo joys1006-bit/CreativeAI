@@ -22,6 +22,9 @@ interface UserR2dbcRepository : ReactiveCrudRepository<UserEntity, Long> {
 
     /** 상태별 사용자 조회 */
     fun findByStatus(status: String): Flux<UserEntity>
+
+    /** 사용자명으로 조회 */
+    fun findByUsername(username: String): Mono<UserEntity>
 }
 
 /**

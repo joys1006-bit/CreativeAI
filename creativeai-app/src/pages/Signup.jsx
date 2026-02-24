@@ -51,6 +51,7 @@ function Signup() {
                 setError('');
             }
         } catch (err) {
+            console.error(err);
             setError('이메일 확인 중 오류가 발생했습니다.');
         }
     };

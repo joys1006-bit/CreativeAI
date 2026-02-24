@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Navbar from '../components/Navbar'
+import GlassCard from '../components/GlassCard'
+import PremiumButton from '../components/PremiumButton'
 import useStore from '../store/store'
 import apiService from '../services/api'
 import './Home.css'
@@ -10,19 +12,13 @@ const Home = () => {
     const navigate = useNavigate()
     const user = useStore((state) => state.user)
     const [trendingWorks, setTrendingWorks] = useState([])
-    const [marketplaceItems, setMarketplaceItems] = useState([])
     const [loading, setLoading] = useState(true)
 
-    // Fetch Real Data from Backend
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [trending, marketplace] = await Promise.all([
-                    apiService.getPopularCreations(),
-                    apiService.getMarketplaceItems()
-                ])
+                const trending = await apiService.getPopularCreations()
                 setTrendingWorks(trending)
-                setMarketplaceItems(marketplace)
             } catch (error) {
                 console.error('Failed to fetch home data:', error)
             } finally {
@@ -41,108 +37,109 @@ const Home = () => {
 
     return (
         <div className="home-container">
-            {/* Greeting Section */}
+            {/* Header Area */}
             <header className="home-header">
-                <div>
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                >
                     <h1 className="greeting-title">
-                        안녕하세요, <span className="highlight">{user?.username || '크리에이터'}</span>님! 👋
+                        안녕하세요, <span className="highlight-text">{user?.username || '크리에이터'}</span>님! 👋
                     </h1>
-                    <p className="greeting-subtitle">오늘은 어떤 멋진 작품을 만들어볼까요?</p>
-                </div>
-                <div className="coin-badge">
-                    <span>💎 {user?.credits || 0}</span>
-                </div>
+                    <p className="greeting-subtitle">오늘은 어떤 영감을 표현해볼까요?</p>
+                </motion.div>
+                <motion.div
+                    className="coin-badge-premium"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                >
+                    <span className="diamond-icon">💎</span>
+                    <span className="coin-count">{user?.credits?.toLocaleString() || 0}</span>
+                </motion.div>
             </header>
 
-            {/* Main Features Grid */}
+            {/* Feature Selection Scope */}
             <section className="features-section">
                 <div className="features-grid">
                     {FEATURES.map((feature, index) => (
-                        <motion.div
+                        <GlassCard
                             key={feature.id}
-                            className="feature-card"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
+                            className="feature-card-wrapper"
+                            delay={index * 0.1}
                             onClick={() => navigate(feature.path)}
                             style={{
-                                background: `linear-gradient(135deg, ${feature.color}, ${feature.color}dd)`
+                                background: `linear-gradient(135deg, ${feature.color}15, ${feature.color}05)`,
+                                borderColor: `${feature.color}30`
                             }}
                         >
-                            <div className="feature-icon-wrapper">
-                                <span className="feature-icon">{feature.icon}</span>
+                            <div className="feature-content">
+                                <div className="feature-icon-box" style={{ backgroundColor: `${feature.color}20` }}>
+                                    <span className="feature-emoji">{feature.icon}</span>
+                                </div>
+                                <div className="feature-info">
+                                    <h3>{feature.title}</h3>
+                                    <p>{feature.subtitle}</p>
+                                </div>
+                                <div className="feature-arrow" style={{ color: feature.color }}>→</div>
                             </div>
-                            <div className="feature-text">
-                                <h3>{feature.title}</h3>
-                                <p>{feature.subtitle}</p>
-                            </div>
-                        </motion.div>
+                        </GlassCard>
                     ))}
                 </div>
             </section>
 
-            {/* Trending Section */}
+            {/* Trending Content Area */}
             <section className="content-section">
                 <div className="section-header">
                     <h2>🔥 실시간 인기 작품</h2>
-                    <span className="see-all">더보기 &gt;</span>
+                    <button className="see-all-btn">전체보기</button>
                 </div>
-                <div className="horizontal-scroll">
+                <div className="horizontal-scroll-container">
                     {loading ? (
-                        <div className="loading-placeholder">로딩 중...</div>
+                        <div className="shimmer-loader">데이터를 불러오는 중...</div>
                     ) : trendingWorks.length > 0 ? (
                         trendingWorks.map((work) => (
-                            <div key={work.id} className="trending-card">
-                                <img src={work.imageUrl} alt={work.title} className="trending-image" />
-                                <div className="trending-info">
-                                    <span className="trending-title">{work.title}</span>
-                                    <span className="trending-author">by {work.creator}</span>
+                            <div key={work.id} className="modern-work-card">
+                                <div className="work-image-wrapper">
+                                    <img src={work.imageUrl} alt={work.title} loading="lazy" />
+                                    <div className="work-like-badge">
+                                        <span className="heart">❤️</span> {work.likes}
+                                    </div>
                                 </div>
-                                <div className="trending-badge">
-                                    ❤️ {work.likes}
+                                <div className="work-meta">
+                                    <span className="work-title">{work.title}</span>
+                                    <span className="work-creator">by @{work.creator}</span>
                                 </div>
                             </div>
                         ))
                     ) : (
-                        <div className="empty-state-home">
-                            <p>아직 인기 작품이 없네요!</p>
-                        </div>
+                        <GlassCard className="empty-state-card" hover={false}>
+                            <p>첫 번째 작품의 주인공이 되어보세요! 🚀</p>
+                        </GlassCard>
                     )}
                 </div>
             </section>
 
-            {/* Marketplace Teaser */}
-            <section className="content-section">
+            {/* Marketplace Engagement */}
+            <section className="content-section marketplace-promo">
                 <div className="section-header">
                     <h2>🛍️ 마켓플레이스</h2>
-                    <span className="see-all" onClick={() => navigate('/marketplace')}>더보기 &gt;</span>
                 </div>
-                <div className="marketplace-banner">
-                    <div className="banner-content">
-                        <h3>프리미엄 에셋 상점</h3>
-                        <p>더 퀄리티 높은 작품을 위한 선택</p>
-                        <button className="btn-banner" onClick={() => navigate('/marketplace')}>구경가기</button>
+                <GlassCard className="marketplace-banner-modern" hover={false}>
+                    <div className="banner-visual"></div>
+                    <div className="banner-text-content">
+                        <h3>프리미엄 디자인 에셋</h3>
+                        <p>전문가들이 제작한 고퀄리티 스타일로 작품의 품격을 높이세요.</p>
+                        <PremiumButton
+                            variant="primary"
+                            onClick={() => navigate('/marketplace')}
+                            className="mt-4"
+                        >
+                            상점 입장하기
+                        </PremiumButton>
                     </div>
-                </div>
-                {/* Optional: Show marketplace items if any */}
-                {marketplaceItems.length > 0 && (
-                    <div className="horizontal-scroll" style={{ marginTop: '16px' }}>
-                        {marketplaceItems.map((item) => (
-                            <div key={item.id} className="trending-card" onClick={() => navigate('/marketplace')}>
-                                <img src={item.thumbnailUrl} alt={item.title} className="trending-image" />
-                                <div className="trending-info">
-                                    <span className="trending-title">{item.title}</span>
-                                    <span className="trending-author">{item.price === 0 ? 'FREE' : `${item.price} CR`}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                </GlassCard>
             </section>
-
-            {/* Bottom Navigation */}
             <Navbar />
         </div>
     )

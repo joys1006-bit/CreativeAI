@@ -17,6 +17,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("io.asyncer:r2dbc-mysql:1.0.2")
+    implementation("io.r2dbc:r2dbc-h2:1.0.0.RELEASE")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")

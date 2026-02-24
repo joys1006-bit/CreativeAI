@@ -77,7 +77,6 @@ function PhotoEditor() {
         }
     }
 
-    const [selectedStyle, setSelectedStyle] = useState('digital-art')
     const [showStylePanel, setShowStylePanel] = useState(false)
 
     const handleAiEdit = async (operation, style = null) => {

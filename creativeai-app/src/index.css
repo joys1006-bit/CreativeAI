@@ -5,26 +5,35 @@
 }
 
 :root {
-    /* Colors - Premium Palette */
-    --primary: #6C5CE7;
-    --primary-light: #A29BFE;
-    --primary-gradient: linear-gradient(135deg, #6C5CE7 0%, #a363d9 100%);
-    --accent: #FF7675;
-    --accent-gradient: linear-gradient(135deg, #FF7675 0%, #fd79a8 100%);
-    --success: #00b894;
-    --warning: #fdcb6e;
-    --error: #d63031;
+    /* Colors - Designer's Sophisticated Palette */
+    --primary: #5f27cd;
+    /* Electric Purple */
+    --primary-deep: #341f97;
+    /* Deep Indigo */
+    --primary-light: #9b59b6;
+    --primary-gradient: linear-gradient(135deg, #341f97 0%, #5f27cd 100%);
 
-    /* Glassmorphism Variables */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.5);
-    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    --accent: #ee5253;
+    /* Sunset Pink */
+    --accent-light: #ff9f43;
+    /* Luminous Coral */
+    --accent-gradient: linear-gradient(135deg, #ff9f43 0%, #ee5253 100%);
 
-    --bg: #F0F3F9;
+    --success: #1dd1a1;
+    --warning: #feca57;
+    --error: #ff6b6b;
+
+    /* Refined Glassmorphism - Dynamic Depth */
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 15px 45px 0 rgba(31, 38, 135, 0.12);
+    --glass-blur: blur(16px);
+
+    --bg: #F8F9FA;
     --surface: #FFFFFF;
-    --text: #2D3436;
-    --text-light: #636E72;
-    --border: #DFE6E9;
+    --text: #222f3e;
+    --text-light: #576574;
+    --border: #dee2e6;
 
     /* Spacing */
     --spacing-xs: 4px;

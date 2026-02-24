@@ -1,6 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
+import GlassCard from '../components/GlassCard'
+import PremiumButton from '../components/PremiumButton'
 import './Result.css'
 
 function Result() {
@@ -9,151 +11,156 @@ function Result() {
     const result = location.state?.result
     const [selectedImage, setSelectedImage] = useState(0)
 
-    // 생성된 파일들
     const files = result?.files || []
     const primaryFile = files.find(f => f.is_primary) || files[0]
 
     const handleDownload = async () => {
         if (!files[selectedImage]) return
-
         try {
             const response = await fetch(files[selectedImage].file_url)
             const blob = await response.blob()
             const url = window.URL.createObjectURL(blob)
             const link = document.createElement('a')
             link.href = url
-            link.download = `creativeai-emoji-${Date.now()}.png`
+            link.download = `creativeai-${Date.now()}.png`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
             window.URL.revokeObjectURL(url)
-            alert('다운로드가 시작되었습니다!')
         } catch (error) {
             console.error('Download error:', error)
-            alert('다운로드 중 오류가 발생했습니다.')
         }
     }
 
     const handleShare = async () => {
         if (!files[selectedImage]) return
-
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: 'CreativeAI 이모티콘',
-                    text: 'AI로 만든 내 이모티콘!',
+                    title: 'CreativeAI',
+                    text: 'AI로 만든 내 작품!',
                     url: files[selectedImage].file_url
                 })
             } catch (error) {
                 console.error('Share error:', error)
             }
-        } else {
-            // Fallback: URL 복사
-            navigator.clipboard.writeText(files[selectedImage].file_url)
-            alert('이미지 URL이 복사되었습니다!')
         }
     }
 
     if (!result || files.length === 0) {
         return (
-            <div className="result">
-                <header className="header glass-effect">
-                    <button className="back-btn" onClick={() => navigate('/home')}>←</button>
+            <div className="result-container">
+                <header className="home-header">
+                    <PremiumButton variant="outline" onClick={() => navigate('/home')}>←</PremiumButton>
                     <h2>결과 없음</h2>
-                    <div></div>
+                    <div style={{ width: 40 }}></div>
                 </header>
                 <main className="content center-content">
-                    <p>생성된 이미지를 찾을 수 없습니다.</p>
-                    <button className="btn-primary" onClick={() => navigate('/emoji-maker')}>
-                        다시 생성하기
-                    </button>
+                    <GlassCard className="empty-state-card" hover={false}>
+                        <p>생성된 이미지를 찾을 수 없습니다.</p>
+                        <PremiumButton className="mt-4" onClick={() => navigate('/emoji-maker')}>
+                            다시 생성하기
+                        </PremiumButton>
+                    </GlassCard>
                 </main>
             </div>
         )
     }
 
     return (
-        <div className="result">
-            <header className="header glass-effect">
+        <div className="result-container">
+            <header className="home-header">
                 <motion.button
-                    className="back-btn"
+                    className="back-btn-modern"
                     onClick={() => navigate('/home')}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                 >←</motion.button>
-                <h2>완성! 🎉</h2>
+                <h2 className="page-title">Creative Result</h2>
                 <div style={{ width: 40 }}></div>
             </header>
 
-            <main className="content">
-                <motion.div
-                    className="result-preview glass-card"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 200 }}
-                >
-                    <img
-                        src={files[selectedImage]?.file_url || primaryFile?.file_url}
-                        alt="Generated Emoji"
-                        className="result-image"
-                        style={{ width: '100%', maxWidth: '400px', borderRadius: '12px' }}
-                    />
-                </motion.div>
+            <main className="result-content">
+                <AnimatePresence mode="wait">
+                    <GlassCard
+                        key={selectedImage}
+                        className="main-preview-card"
+                        hover={false}
+                        delay={0.1}
+                    >
+                        <motion.img
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.05 }}
+                            src={files[selectedImage]?.file_url || primaryFile?.file_url}
+                            alt="Generated AI Art"
+                            className="main-result-image"
+                        />
+                    </GlassCard>
+                </AnimatePresence>
 
                 {files.length > 1 && (
-                    <div className="other-versions">
-                        <h4>다른 버전 ({files.length}개)</h4>
-                        <div className="version-scroll">
+                    <div className="variations-section">
+                        <h4 className="section-subtitle">Variations</h4>
+                        <div className="variation-grid">
                             {files.map((file, index) => (
                                 <motion.div
                                     key={index}
-                                    className={`version-card ${selectedImage === index ? 'active' : ''}`}
+                                    className={`variation-item ${selectedImage === index ? 'active' : ''}`}
                                     onClick={() => setSelectedImage(index)}
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                 >
                                     <img
                                         src={file.thumbnail_url || file.file_url}
-                                        alt={`Version ${index + 1}`}
-                                        className="version-preview"
-                                        style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }}
+                                        alt={`Variation ${index + 1}`}
+                                        className="variation-thumb"
                                     />
+                                    {selectedImage === index && (
+                                        <motion.div
+                                            className="active-indicator"
+                                            layoutId="active-indicator"
+                                        />
+                                    )}
                                 </motion.div>
                             ))}
                         </div>
                     </div>
                 )}
 
-                <div className="result-info glass-card">
-                    <p>스타일: <strong>{result.style_name || '커스텀'}</strong></p>
-                    <p>생성 시간: {new Date(result.created_at).toLocaleString('ko-KR')}</p>
+                <div className="info-grid">
+                    <GlassCard className="info-item-card" hover={false} delay={0.2}>
+                        <span className="info-label">Style</span>
+                        <span className="info-value">{result.style_name || 'AI Premium'}</span>
+                    </GlassCard>
+                    <GlassCard className="info-item-card" hover={false} delay={0.3}>
+                        <span className="info-label">Created</span>
+                        <span className="info-value">{new Date(result.created_at).toLocaleDateString()}</span>
+                    </GlassCard>
                 </div>
 
-                <div className="action-buttons">
-                    <motion.button
-                        className="btn-secondary"
+                <div className="fixed-action-bar">
+                    <PremiumButton
+                        variant="outline"
                         onClick={() => navigate('/emoji-maker')}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        className="flex-1"
                     >
-                        🔄 다시생성
-                    </motion.button>
-                    <motion.button
-                        className="btn-primary"
+                        🔄 Redo
+                    </PremiumButton>
+                    <PremiumButton
+                        variant="primary"
                         onClick={handleDownload}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        className="flex-2"
                     >
-                        💾 다운로드
-                    </motion.button>
-                    <motion.button
-                        className="btn-primary"
+                        💾 Save to Gallery
+                    </PremiumButton>
+                    <PremiumButton
+                        variant="accent"
                         onClick={handleShare}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        className="btn-icon-only"
                     >
-                        📤 공유
-                    </motion.button>
+                        📤
+                    </PremiumButton>
                 </div>
             </main>
         </div>

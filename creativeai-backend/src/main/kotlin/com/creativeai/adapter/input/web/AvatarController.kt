@@ -2,7 +2,6 @@ package com.creativeai.adapter.input.web
 
 import com.creativeai.application.service.AvatarService
 import com.creativeai.common.response.ApiResponse
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
@@ -10,8 +9,7 @@ import reactor.core.publisher.Mono
 @RestController
 @RequestMapping("/api/avatar")
 @CrossOrigin(origins = ["http://localhost:3000"])
-class AvatarController {
-        @Autowired lateinit var avatarService: AvatarService
+class AvatarController(private val avatarService: AvatarService) {
 
         /** 아바타 생성 요청 API POST /api/avatar/generate */
         @PostMapping("/generate")

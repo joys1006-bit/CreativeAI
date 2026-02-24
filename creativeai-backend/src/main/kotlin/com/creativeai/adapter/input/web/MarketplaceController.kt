@@ -1,63 +1,54 @@
 package com.creativeai.adapter.input.web
 
-import com.creativeai.adapter.output.persistence.CreationR2dbcRepository
-import com.creativeai.common.response.ApiResponse
+import com.creativeai.application.port.input.OrderUseCase
+import com.creativeai.application.port.input.SettlementUseCase
+import com.creativeai.domain.settlement.CreatorEarning
+import com.creativeai.domain.settlement.MarketplaceOrder
+import com.creativeai.domain.settlement.Settlement
 import java.math.BigDecimal
 import org.springframework.web.bind.annotation.*
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-/**
- * ============================================ 마켓플레이스 컨트롤러 (DB Connected)
- * ============================================
- *
- * 엔드포인트:
- * - GET /api/marketplace : 마켓플레이스 아이템 조회
- */
 @RestController
 @RequestMapping("/api/marketplace")
-@CrossOrigin(origins = ["http://localhost:3000", "http://localhost:5173"])
-class MarketplaceController(private val creationRepository: CreationR2dbcRepository) {
+class MarketplaceController(
+        private val orderUseCase: OrderUseCase,
+        private val settlementUseCase: SettlementUseCase
+) {
 
-        @GetMapping
-        fun getMarketplaceItems(
-                @RequestParam(required = false) category: String?,
-                @RequestParam(defaultValue = "20") limit: Int
-        ): Mono<ApiResponse<List<MarketplaceItemDto>>> {
-                // DB에서 판매 중인 아이템 조회 (is_for_sale = true)
-                return creationRepository
-                        .findAll()
-                        .filter { it.isForSale }
-                        .take(limit.toLong())
-                        .map { entity ->
-                                MarketplaceItemDto(
-                                        id = entity.id ?: 0L,
-                                        // Use a deterministically random image based on ID to make
-                                        // it look stable
-                                        thumbnailUrl =
-                                                "https://picsum.photos/seed/${entity.id}/300/300",
-                                        title = entity.title ?: "Untitled",
-                                        price = entity.price ?: BigDecimal.ZERO,
-                                        authorName =
-                                                "User ${entity.userId}", // Simplified author name
-                                        category = entity.creationType
-                                )
-                        }
-                        .collectList()
-                        .map { items ->
-                                ApiResponse(
-                                        success = true,
-                                        data = items,
-                                        message = "마켓플레이스 아이템 조회 성공"
-                                )
-                        }
+        /** 작품 주문 생성 (구매) */
+        @PostMapping("/orders")
+        fun placeOrder(@RequestBody request: OrderRequest): Mono<MarketplaceOrder> {
+                return orderUseCase.placeOrder(
+                        buyerId = request.buyerId,
+                        creationId = request.creationId,
+                        amount = request.amount
+                )
+        }
+
+        /** 크리에이터 수익 내역 조회 */
+        @GetMapping("/earnings/{creatorId}")
+        fun getEarnings(@PathVariable creatorId: Long): Flux<CreatorEarning> {
+                return settlementUseCase.getCreatorEarnings(creatorId)
+        }
+
+        /** 정산 요청 */
+        @PostMapping("/settlements")
+        fun requestSettlement(@RequestBody request: SettlementRequest): Mono<Settlement> {
+                return settlementUseCase.requestSettlement(
+                        creatorId = request.creatorId,
+                        bankInfo = request.bankInfo
+                )
+        }
+
+        /** 정산 이력 조회 */
+        @GetMapping("/settlements/{creatorId}")
+        fun getSettlementHistory(@PathVariable creatorId: Long): Flux<Settlement> {
+                return settlementUseCase.getSettlementHistory(creatorId)
         }
 }
 
-data class MarketplaceItemDto(
-        val id: Long,
-        val thumbnailUrl: String,
-        val title: String,
-        val price: BigDecimal,
-        val authorName: String,
-        val category: String
-)
+data class OrderRequest(val buyerId: Long, val creationId: Long, val amount: BigDecimal)
+
+data class SettlementRequest(val creatorId: Long, val bankInfo: String)

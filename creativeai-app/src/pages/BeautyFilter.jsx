@@ -22,12 +22,14 @@ function BeautyFilter() {
         return () => {
             stopCamera()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
         if (cameraActive && videoRef.current) {
             applyFilters()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, cameraActive])
 
     const startCamera = async () => {

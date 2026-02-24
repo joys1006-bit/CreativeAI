@@ -14,6 +14,12 @@ function info(message, data = {}) {
     fs.appendFileSync(logFile, logEntry);
 }
 
+function warn(message, data = {}) {
+    const logEntry = `[WARN] [${new Date().toISOString()}] ${message} ${JSON.stringify(data)}\n`;
+    console.warn(logEntry.trim());
+    fs.appendFileSync(logFile, logEntry);
+}
+
 function error(message, err = {}) {
     const logEntry = `[ERROR] [${new Date().toISOString()}] ${message} - ${err.message || err} ${err.stack || ''}\n`;
     console.error(logEntry.trim());
@@ -25,4 +31,4 @@ function audit(user, action, details = {}) {
     fs.appendFileSync(logFile, logEntry);
 }
 
-module.exports = { info, error, audit };
+module.exports = { info, warn, error, audit };

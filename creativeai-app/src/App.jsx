@@ -101,6 +101,9 @@ function App() {
                 <Route path="/mypage" element={
                     <PrivateRoute><MyPage /></PrivateRoute>
                 } />
+
+                {/* 404 Not Found Handling */}
+                <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
         </BrowserRouter>
     )

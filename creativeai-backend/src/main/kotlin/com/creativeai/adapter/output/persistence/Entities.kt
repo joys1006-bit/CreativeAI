@@ -1,5 +1,9 @@
 package com.creativeai.adapter.output.persistence
 
+import com.creativeai.domain.creation.Creation
+import com.creativeai.domain.creation.CreationStatus
+import com.creativeai.domain.creation.CreationType
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
@@ -101,7 +105,59 @@ data class CreationEntity(
         @Column("completed_at") val completedAt: LocalDateTime? = null,
         @Column("error_message") val errorMessage: String? = null,
         @Column("input_data") val inputData: String? = null
-)
+) {
+        fun toDomain() =
+                Creation(
+                        id = id,
+                        userId = userId,
+                        creationType = CreationType.valueOf(creationType),
+                        styleId = styleId,
+                        title = title,
+                        description = description,
+                        prompt = prompt,
+                        status = CreationStatus.valueOf(status),
+                        progress = progress,
+                        creditCost = creditCost,
+                        price = price,
+                        isForSale = isForSale,
+                        likeCount = likeCount,
+                        metadata = metadata,
+                        processingStartedAt = processingStartedAt,
+                        processingCompletedAt = processingCompletedAt,
+                        completedAt = completedAt,
+                        errorMessage = errorMessage,
+                        inputData = inputData,
+                        createdAt = createdAt,
+                        updatedAt = updatedAt
+                )
+
+        companion object {
+                fun fromDomain(creation: Creation) =
+                        CreationEntity(
+                                id = creation.id,
+                                userId = creation.userId,
+                                creationType = creation.creationType.name,
+                                styleId = creation.styleId,
+                                title = creation.title,
+                                description = creation.description,
+                                prompt = creation.prompt,
+                                status = creation.status.name,
+                                progress = creation.progress,
+                                creditCost = creation.creditCost,
+                                price = creation.price,
+                                isForSale = creation.isForSale,
+                                likeCount = creation.likeCount,
+                                metadata = creation.metadata,
+                                processingStartedAt = creation.processingStartedAt,
+                                processingCompletedAt = creation.processingCompletedAt,
+                                completedAt = creation.completedAt,
+                                errorMessage = creation.errorMessage,
+                                inputData = creation.inputData,
+                                createdAt = creation.createdAt,
+                                updatedAt = creation.updatedAt
+                        )
+        }
+}
 
 /** R2DBC Entity: creation_files 테이블 */
 @Table("creation_files")

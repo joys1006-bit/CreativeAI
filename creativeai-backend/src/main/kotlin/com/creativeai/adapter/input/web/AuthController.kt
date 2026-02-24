@@ -4,7 +4,6 @@ import com.creativeai.application.service.AuthService
 import com.creativeai.application.service.AuthTokenResponse
 import com.creativeai.application.service.UserInfoResponse
 import com.creativeai.common.response.ApiResponse
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -25,9 +24,7 @@ import reactor.core.publisher.Mono
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = ["http://localhost:3000", "http://localhost:5173"])
-class AuthController {
-
-        @Autowired lateinit var authService: AuthService
+class AuthController(private val authService: AuthService) {
 
         /**
          * 회원가입 API
@@ -231,13 +228,27 @@ class AuthController {
          */
         @GetMapping("/check-email")
         fun checkEmail(@RequestParam email: String): Mono<ApiResponse<EmailCheckResponse>> {
-                return authService.userRepository.existsByEmail(email.lowercase()).map { exists ->
-                        ApiResponse(
-                                success = true,
-                                data = EmailCheckResponse(available = !exists),
-                                message = if (exists) "이미 사용 중인 이메일입니다." else "사용 가능한 이메일입니다."
-                        )
-                }
+                return authService
+                        .userRepo
+                        .existsByEmail(email.lowercase().trim())
+                        .defaultIfEmpty(false) // 비어있을 경우 대비
+                        .map { exists ->
+                                ApiResponse(
+                                        success = true,
+                                        data = EmailCheckResponse(available = !exists),
+                                        message =
+                                                if (exists) "이미 사용 중인 이메일입니다." else "사용 가능한 이메일입니다."
+                                )
+                        }
+                        .onErrorResume { error ->
+                                Mono.just(
+                                        ApiResponse(
+                                                success = false,
+                                                data = null,
+                                                message = "이메일 확인 중 오류가 발생했습니다: ${error.message}"
+                                        )
+                                )
+                        }
         }
 }
 

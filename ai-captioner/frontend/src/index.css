@@ -1,11 +1,22 @@
 :root {
     --primary: #8a2be2;
-    --primary-glow: rgba(138, 43, 226, 0.4);
-    --bg: #0a0a0c;
-    --card-bg: rgba(255, 255, 255, 0.05);
-    --text: #ffffff;
-    --text-dim: rgba(255, 255, 255, 0.6);
-    font-family: 'Outfit', 'Pretendard', sans-serif;
+    --primary-light: #a855f7;
+    --primary-glow: rgba(138, 43, 226, 0.3);
+    --bg-darker: #050505;
+    --bg: #0f1014;
+    --bg-surface: #1a1b23;
+    --bg-surface-light: #252632;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-bright: rgba(255, 255, 255, 0.15);
+    --text: #f8fafc;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+    --playhead: #ef4444;
+    --waveform: #6366f1;
+    --accent-green: #10b981;
+    --accent-orange: #f59e0b;
+    --accent-red: #ef4444;
+    font-family: 'Inter', 'Outfit', 'Pretendard', sans-serif;
 }
 
 body {
@@ -33,6 +44,7 @@ body {
 .premium-gradient {
     background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
