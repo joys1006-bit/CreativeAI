@@ -362,6 +362,10 @@ const App = () => {
         setCaptions(current => { pushHistory(current); return current; });
     }, [pushHistory]);
 
+    const updateCaptionTiming = useCallback((index, newStart, newEnd) => {
+        setCaptions(prev => prev.map((c, i) => i === index ? { ...c, start: Math.round(newStart * 100) / 100, end: Math.round(newEnd * 100) / 100 } : c));
+    }, []);
+
     const deleteCaption = useCallback((index) => {
         setCaptions(prev => prev.filter((_, i) => i !== index));
         setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
@@ -664,6 +668,7 @@ const App = () => {
                         overlayImage={overlayImage}
                         onChangeOverlayImage={setOverlayImage}
                         onRemoveOverlayImage={() => setOverlayImage(null)}
+                        onUpdateCaption={updateCaption}
                     />
 
                     <WordChipEditor
@@ -738,6 +743,7 @@ const App = () => {
                     syncOffset={syncOffset}
                     silenceSegments={silenceSegments}
                     isPlaying={isPlaying}
+                    onUpdateCaptionTiming={updateCaptionTiming}
                 />
 
                 <AnimatePresence>

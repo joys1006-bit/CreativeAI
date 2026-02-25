@@ -1,28 +1,36 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * 워드칩 에디터 컴포넌트
  * - 자막 편집, 삭제, 분할 버튼
  * - 스마트 스크롤: 재생 중 자동 추적, 일시정지 시 수동 스크롤
+ * - FIX: 자동 스크롤 시 onScroll 이벤트 무시하여 악순환 방지
  */
 const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCaption, onDeleteCaption, onMergeCaptions, onSplitCaption, status, isPlaying }) => {
-    const activeChipRef = useRef(null);
     const listRef = useRef(null);
     const lastScrollTime = useRef(0);
     const [userScrolling, setUserScrolling] = useState(false);
     const [autoTrack, setAutoTrack] = useState(true);
     const userScrollTimeout = useRef(null);
+    const isAutoScrolling = useRef(false); // 자동 스크롤 중 플래그
 
     const formatTime = (s) => new Date(s * 1000).toISOString().substr(14, 5);
 
-    /* 사용자 수동 스크롤 감지 — 일시정지 상태에서만 활성화 */
+    // 현재 활성 자막 인덱스 찾기
+    const activeIndex = captions.findIndex(cap => {
+        const start = cap.start + syncOffset;
+        const end = cap.end + syncOffset;
+        return currentTime >= start && currentTime <= end;
+    });
+
+    /* 사용자 수동 스크롤 감지 — 자동 스크롤 중에는 무시! */
     const handleUserScroll = useCallback(() => {
-        if (!isPlaying) {
-            setUserScrolling(true);
-            if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
-            userScrollTimeout.current = setTimeout(() => setUserScrolling(false), 2000);
-        }
+        if (isAutoScrolling.current) return; // 자동 스크롤에 의한 이벤트 무시
+        if (!isPlaying) return; // 일시정지 중에는 자유 스크롤
+
+        setUserScrolling(true);
+        if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+        userScrollTimeout.current = setTimeout(() => setUserScrolling(false), 3000);
     }, [isPlaying]);
 
     /* 재생 시작하면 userScrolling 초기화 */
@@ -33,26 +41,35 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
         }
     }, [isPlaying]);
 
-    /* 스마트 자동 스크롤: autoTrack ON + 재생 중 + 수동 스크롤 아닐 때 */
+    /* 스마트 자동 스크롤: DOM data-active 속성 기반 */
     useEffect(() => {
         if (!autoTrack || !isPlaying || userScrolling) return;
+        if (activeIndex < 0 || !listRef.current) return;
 
         const now = Date.now();
-        if (now - lastScrollTime.current < 300) return;
+        if (now - lastScrollTime.current < 400) return;
 
-        if (activeChipRef.current && listRef.current) {
-            const container = listRef.current;
-            const chip = activeChipRef.current;
-            const containerRect = container.getBoundingClientRect();
-            const chipRect = chip.getBoundingClientRect();
+        // DOM에서 직접 활성 요소 찾기 (ref 의존 제거)
+        const activeEl = listRef.current.querySelector(`[data-chip-index="${activeIndex}"]`);
+        if (!activeEl) return;
 
-            // 현재 활성 자막이 보이지 않으면 스크롤
-            if (chipRect.top < containerRect.top || chipRect.bottom > containerRect.bottom) {
-                chip.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                lastScrollTime.current = now;
-            }
+        const container = listRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const chipRect = activeEl.getBoundingClientRect();
+
+        // 활성 자막이 화면 밖에 있으면 스크롤
+        const isOutOfView = chipRect.top < containerRect.top + 10 || chipRect.bottom > containerRect.bottom - 10;
+        if (isOutOfView) {
+            isAutoScrolling.current = true;
+            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            lastScrollTime.current = now;
+
+            // 스크롤 완료 후 플래그 해제
+            setTimeout(() => {
+                isAutoScrolling.current = false;
+            }, 600);
         }
-    }, [currentTime, captions, isPlaying, userScrolling, autoTrack]);
+    }, [currentTime, activeIndex, isPlaying, userScrolling, autoTrack]);
 
     useEffect(() => {
         return () => {
@@ -94,23 +111,21 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
                         <p>AI가 자막을 생성하는 중입니다...</p>
                     </div>
                 ) : captions.length > 0 ? (
-                    <AnimatePresence>
+                    <>
                         {captions.map((cap, idx) => {
                             const start = cap.start + syncOffset;
                             const end = cap.end + syncOffset;
-                            const isActive = currentTime >= start && currentTime <= end;
+                            const isActive = idx === activeIndex;
 
                             return (
-                                <motion.div
+                                <div
                                     key={cap.id || idx}
-                                    ref={isActive ? activeChipRef : null}
+                                    data-chip-index={idx}
                                     className={`chip-item ${isActive ? 'active' : ''}`}
                                     onClick={() => onSeek(start)}
-                                    layout
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, x: -100 }}
-                                    transition={{ duration: 0.2 }}
+                                    style={{
+                                        transition: 'background 0.2s ease, border-color 0.2s ease',
+                                    }}
                                 >
                                     <div className="chip-metadata">
                                         <span className="chip-index">#{idx + 1}</span>
@@ -147,15 +162,15 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
                                             rows={Math.max(1, Math.ceil(cap.text.length / 30))}
                                         />
                                     </div>
-                                </motion.div>
+                                </div>
                             );
                         })}
-                    </AnimatePresence>
+                    </>
                 ) : (
                     <div className="editor-empty">
-                        <motion.p animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2 }}>
+                        <p style={{ opacity: 0.6 }}>
                             홈 탭에서 영상을 불러오고 AI 자동 자막을 실행하세요
-                        </motion.p>
+                        </p>
                     </div>
                 )}
             </div>

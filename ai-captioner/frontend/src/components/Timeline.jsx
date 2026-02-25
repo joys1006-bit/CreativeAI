@@ -8,7 +8,7 @@ import PlaybackSpeed from './PlaybackSpeed';
  * - 타임라인 ruler
  * - 스마트 스크롤: 재생 중 자동 추적, 일시정지 시 수동 스크롤
  */
-const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, waveform, togglePlay, formatTime, onSeek, syncOffset = 0, isPlaying, videoRef }) => {
+const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, waveform, togglePlay, formatTime, onSeek, syncOffset = 0, isPlaying, videoRef, onUpdateCaptionTiming }) => {
     const waveformCanvasRef = useRef(null);
     const playheadCanvasRef = useRef(null);
     const rulerCanvasRef = useRef(null);
@@ -16,6 +16,49 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
     const [userScrolling, setUserScrolling] = useState(false);
     const userScrollTimeout = useRef(null);
     const trackWidth = useMemo(() => Math.max(duration * zoomLevel, 200), [duration, zoomLevel]);
+
+    // 드래그 리사이즈 상태
+    const [dragging, setDragging] = useState(null); // { idx, edge: 'left'|'right', startX, origStart, origEnd }
+
+    /* 드래그 리사이즈 핸들러 */
+    const handleDragStart = useCallback((e, idx, edge) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const cap = captions[idx];
+        setDragging({
+            idx,
+            edge,
+            startX: e.clientX,
+            origStart: cap.start,
+            origEnd: cap.end,
+        });
+    }, [captions]);
+
+    useEffect(() => {
+        if (!dragging) return;
+
+        const handleMouseMove = (e) => {
+            const dx = e.clientX - dragging.startX;
+            const dt = dx / zoomLevel; // 픽셀 → 시간
+
+            if (dragging.edge === 'left') {
+                const newStart = Math.max(0, Math.min(dragging.origStart + dt, dragging.origEnd - 0.2));
+                onUpdateCaptionTiming?.(dragging.idx, newStart, dragging.origEnd);
+            } else {
+                const newEnd = Math.max(dragging.origStart + 0.2, Math.min(dragging.origEnd + dt, duration));
+                onUpdateCaptionTiming?.(dragging.idx, dragging.origStart, newEnd);
+            }
+        };
+
+        const handleMouseUp = () => setDragging(null);
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [dragging, zoomLevel, duration, onUpdateCaptionTiming]);
 
     /* 사용자 수동 스크롤 감지 */
     const handleUserScroll = useCallback(() => {
@@ -209,19 +252,36 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
                         style={{ left: `${currentTime * zoomLevel}px` }}
                     />
 
-                    {/* Caption Clips */}
+                    {/* Caption Clips with Drag Handles */}
                     <div className="caption-track" style={{ marginTop: '64px' }}>
                         {captions.map((cap, idx) => {
                             const start = cap.start + syncOffset;
                             const end = cap.end + syncOffset;
                             const isActive = currentTime >= start && currentTime <= end;
+                            const isDraggingThis = dragging?.idx === idx;
+                            const clipWidth = Math.max((end - start) * zoomLevel, 4);
+
+                            const handleStyle = {
+                                position: 'absolute',
+                                top: 0,
+                                width: '6px',
+                                height: '100%',
+                                cursor: 'col-resize',
+                                zIndex: 3,
+                                background: isDraggingThis ? 'rgba(139,92,246,0.8)' : 'transparent',
+                                transition: isDraggingThis ? 'none' : 'background 0.15s',
+                                borderRadius: '2px',
+                            };
+
                             return (
                                 <div
                                     key={cap.id || idx}
                                     className={`caption-clip ${isActive ? 'clip-active' : ''}`}
                                     style={{
                                         left: `${start * zoomLevel}px`,
-                                        width: `${Math.max((end - start) * zoomLevel, 4)}px`
+                                        width: `${clipWidth}px`,
+                                        position: 'absolute',
+                                        border: isDraggingThis ? '1px solid rgba(139,92,246,0.6)' : undefined,
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -229,7 +289,26 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
                                     }}
                                     title={cap.text}
                                 >
-                                    {cap.text}
+                                    {/* 좌측 드래그 핸들 */}
+                                    <div
+                                        style={{ ...handleStyle, left: 0 }}
+                                        onMouseDown={(e) => handleDragStart(e, idx, 'left')}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.5)'}
+                                        onMouseLeave={e => { if (!isDraggingThis) e.currentTarget.style.background = 'transparent'; }}
+                                    />
+
+                                    {/* 클립 텍스트 */}
+                                    <span style={{ pointerEvents: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 8px' }}>
+                                        {cap.text}
+                                    </span>
+
+                                    {/* 우측 드래그 핸들 */}
+                                    <div
+                                        style={{ ...handleStyle, right: 0 }}
+                                        onMouseDown={(e) => handleDragStart(e, idx, 'right')}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.5)'}
+                                        onMouseLeave={e => { if (!isDraggingThis) e.currentTarget.style.background = 'transparent'; }}
+                                    />
                                 </div>
                             );
                         })}
