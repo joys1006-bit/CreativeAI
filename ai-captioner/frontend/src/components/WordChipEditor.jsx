@@ -1,41 +1,87 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * 워드칩 에디터 컴포넌트
  * - 자막 편집, 삭제, 분할 버튼
- * - 자동 스크롤 (throttled)
+ * - 스마트 스크롤: 재생 중 자동 추적, 일시정지 시 수동 스크롤
  */
-const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCaption, onDeleteCaption, onMergeCaptions, onSplitCaption, status }) => {
+const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCaption, onDeleteCaption, onMergeCaptions, onSplitCaption, status, isPlaying }) => {
     const activeChipRef = useRef(null);
     const listRef = useRef(null);
     const lastScrollTime = useRef(0);
+    const [userScrolling, setUserScrolling] = useState(false);
+    const userScrollTimeout = useRef(null);
 
     const formatTime = (s) => new Date(s * 1000).toISOString().substr(14, 5);
 
+    /* 사용자 수동 스크롤 감지 — 일시정지 상태에서만 활성화 */
+    const handleUserScroll = useCallback(() => {
+        if (!isPlaying) {
+            setUserScrolling(true);
+            if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+            userScrollTimeout.current = setTimeout(() => setUserScrolling(false), 2000);
+        }
+    }, [isPlaying]);
+
+    /* 재생 시작하면 userScrolling 초기화 */
     useEffect(() => {
+        if (isPlaying) {
+            setUserScrolling(false);
+            if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+        }
+    }, [isPlaying]);
+
+    /* 스마트 자동 스크롤: 재생 중 + 사용자가 수동 스크롤 안 할 때만 */
+    useEffect(() => {
+        if (!isPlaying || userScrolling) return;
+
         const now = Date.now();
-        if (now - lastScrollTime.current < 500) return;
+        if (now - lastScrollTime.current < 300) return;
+
         if (activeChipRef.current && listRef.current) {
             const container = listRef.current;
             const chip = activeChipRef.current;
             const containerRect = container.getBoundingClientRect();
             const chipRect = chip.getBoundingClientRect();
+
+            // 현재 활성 자막이 보이지 않으면 스크롤
             if (chipRect.top < containerRect.top || chipRect.bottom > containerRect.bottom) {
                 chip.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 lastScrollTime.current = now;
             }
         }
-    }, [currentTime, captions]);
+    }, [currentTime, captions, isPlaying, userScrolling]);
+
+    useEffect(() => {
+        return () => {
+            if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+        };
+    }, []);
 
     return (
         <div className="editor-container">
             <div className="editor-header">
                 <h3>편집 스크립트</h3>
-                <span className="segment-count">{captions.length}개의 블록</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {isPlaying && (
+                        <span style={{
+                            fontSize: '10px',
+                            color: '#10b981',
+                            background: 'rgba(16,185,129,0.15)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            fontWeight: 600,
+                            letterSpacing: '0.5px',
+                        }}>
+                            ● 자동 추적
+                        </span>
+                    )}
+                    <span className="segment-count">{captions.length}개의 블록</span>
+                </div>
             </div>
 
-            <div className="chip-list" ref={listRef}>
+            <div className="chip-list" ref={listRef} onScroll={handleUserScroll}>
                 {status === 'processing' || status === 'uploading' ? (
                     <div className="editor-loading">
                         <div className="spinner" />

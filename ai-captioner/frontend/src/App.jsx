@@ -583,6 +583,7 @@ const App = () => {
                         onMergeCaptions={mergeCaptions}
                         onSplitCaption={splitCaption}
                         status={status}
+                        isPlaying={isPlaying}
                     />
 
                     <AiInsightPanel
@@ -625,6 +626,7 @@ const App = () => {
                     onSeek={seekTo}
                     syncOffset={syncOffset}
                     silenceSegments={silenceSegments}
+                    isPlaying={isPlaying}
                 />
 
                 <AnimatePresence>

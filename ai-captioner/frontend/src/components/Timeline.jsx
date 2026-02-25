@@ -1,19 +1,58 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 
 /**
  * 타임라인 컴포넌트
  * - Canvas 기반 실제 waveform 렌더링 (파형은 데이터 변경 시에만 렌더)
  * - 별도 playhead Canvas (고빈도 업데이트)
  * - 타임라인 ruler
- * - FIX: waveform Canvas를 currentTime에서 분리하여 성능 최적화
+ * - 스마트 스크롤: 재생 중 자동 추적, 일시정지 시 수동 스크롤
  */
-const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, waveform, togglePlay, formatTime, onSeek, syncOffset = 0 }) => {
+const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, waveform, togglePlay, formatTime, onSeek, syncOffset = 0, isPlaying }) => {
     const waveformCanvasRef = useRef(null);
     const playheadCanvasRef = useRef(null);
     const rulerCanvasRef = useRef(null);
+    const wrapperRef = useRef(null);
+    const [userScrolling, setUserScrolling] = useState(false);
+    const userScrollTimeout = useRef(null);
     const trackWidth = useMemo(() => Math.max(duration * zoomLevel, 200), [duration, zoomLevel]);
 
-    // 파형 Canvas 렌더링 — 데이터 변경 시에만 (currentTime 제외!)
+    /* 사용자 수동 스크롤 감지 */
+    const handleUserScroll = useCallback(() => {
+        if (!isPlaying) {
+            setUserScrolling(true);
+            if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+            userScrollTimeout.current = setTimeout(() => setUserScrolling(false), 2000);
+        }
+    }, [isPlaying]);
+
+    /* 재생 시작 시 초기화 */
+    useEffect(() => {
+        if (isPlaying) {
+            setUserScrolling(false);
+            if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+        }
+    }, [isPlaying]);
+
+    /* 타임라인 자동 스크롤: 재생 중 playhead 따라가기 */
+    useEffect(() => {
+        if (!isPlaying || userScrolling || !wrapperRef.current || !duration) return;
+
+        const wrapper = wrapperRef.current;
+        const playheadX = currentTime * zoomLevel;
+        const wrapperWidth = wrapper.clientWidth;
+        const scrollLeft = wrapper.scrollLeft;
+
+        // playhead가 화면 영역 바깥으로 나가면 스크롤
+        const margin = wrapperWidth * 0.2; // 20% 여백
+        if (playheadX < scrollLeft + margin || playheadX > scrollLeft + wrapperWidth - margin) {
+            wrapper.scrollTo({
+                left: playheadX - wrapperWidth * 0.3,
+                behavior: 'smooth',
+            });
+        }
+    }, [currentTime, zoomLevel, isPlaying, userScrolling, duration]);
+
+    // 파형 Canvas 렌더링 — 데이터 변경 시에만
     useEffect(() => {
         const canvas = waveformCanvasRef.current;
         if (!canvas || !waveform || waveform.length === 0) return;
@@ -39,9 +78,9 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
             const x = i * barWidth;
             ctx.fillRect(x, h - amplitude, barWidth - 0.5, amplitude);
         }
-    }, [waveform, trackWidth]); // FIX: currentTime 제거!
+    }, [waveform, trackWidth]);
 
-    // Playhead 오버레이 — 고빈도 업데이트 (별도 Canvas)
+    // Playhead 오버레이 — 고빈도 업데이트
     useEffect(() => {
         const canvas = playheadCanvasRef.current;
         if (!canvas || !duration) return;
@@ -54,7 +93,6 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
 
         ctx.clearRect(0, 0, w, h);
 
-        // 재생 위치까지 반투명 하이라이트
         const playX = (currentTime / duration) * w;
         if (playX > 0 && playX < w) {
             ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
@@ -106,6 +144,13 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
         }
     };
 
+    // cleanup
+    useEffect(() => {
+        return () => {
+            if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+        };
+    }, []);
+
     return (
         <div className="timeline-container">
             <div className="timeline-controls">
@@ -126,7 +171,12 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
                 </div>
             </div>
 
-            <div className="timeline-tracks-wrapper" onClick={handleTrackClick}>
+            <div
+                className="timeline-tracks-wrapper"
+                ref={wrapperRef}
+                onClick={handleTrackClick}
+                onScroll={handleUserScroll}
+            >
                 {/* Ruler */}
                 <canvas
                     ref={rulerCanvasRef}
