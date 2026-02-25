@@ -39,9 +39,13 @@ creativeai-backend/*.class
 *.tmp
 *.temp
 
-# Environment
+# ============================================
+# 환경변수 / 보안 정보 (절대 커밋 금지!)
+# ============================================
 .env
-.env.local
+.env.*
+!.env.example
+*.env
 
 # Large Files & Binaries
 *.exe
@@ -50,3 +54,9 @@ creativeai-backend/*.class
 ai-captioner/backend/uploads/
 ai-captioner/backend/jobs.json
 creativeai-backend/*.log
+
+# Electron build
+ai-captioner/frontend/dist-electron/
+ai-captioner/frontend/release/
+
+
