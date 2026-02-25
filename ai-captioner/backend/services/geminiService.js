@@ -71,43 +71,49 @@ async function transcribeWithGemini(audioPath, targetLanguage = 'ko', retryCount
         let lastError = null;
         for (const modelName of MODELS_TO_TRY) {
             try {
-                console.log(`[AI] Speed mode: ${modelName}`);
+                console.log(`[AI] Precision mode: ${modelName}`);
                 const model = genAI.getGenerativeModel({
                     model: modelName,
+                    generationConfig: {
+                        temperature: 0,
+                        topP: 1,
+                        topK: 1,
+                    },
                     systemInstruction: {
                         role: "system",
-                        parts: [{ text: `당신은 초고속 AI 분석기입니다. 모든 데이터는 ${targetLangFull}로, JSON 형식으로만 출력합니다. 군더더기 설명을 생략하고 즉시 핵심만 추출합니다.` }]
+                        parts: [{ text: `당신은 전문 속기사(stenographer)입니다. 오디오에서 들리는 모든 단어를 정확하게 받아적습니다. ${targetLangFull}로 출력하며, JSON 형식만 사용합니다. 들리지 않는 부분은 추측하지 않고, 들리는 그대로만 기록합니다.` }]
                     }
                 });
 
                 const prompt = `
-                Role: You are a professional stenographer.
-                Task: Transcribe the audio exactly as spoken. Do not summarize. Do not polish grammar.
-                Language: ${targetLangFull}
-                
-                Output Format: JSON Only.
-                Structure:
-                {
-                    "segments": [
-                        { 
-                            "start": 0.0, 
-                            "end": 2.5, 
-                            "text": "Exact spoken words",
-                            "confidence": 0.95
-                        }
-                    ],
-                    "summary": "Brief 1-sentence topic summary",
-                    "keywords": ["tag1", "tag2"]
-                }
-                
-                Rules:
-                1. Segment length: 2-5 seconds.
-                2. **CRITICAL**: 'start' and 'end' MUST be in TOTAL SECONDS (e.g., 2 minutes 30 seconds = 150.0, NOT 2.30).
-                3. Example: For a 3-minute audio, the last segment's 'end' should be around 180.0, NOT 3.0.
-                4. 'confidence': Estimate based on audio clarity (0.0 to 1.0).
-                5. If audio is silent/noise, exclude segment.
-                6. Timestamps should be monotonically increasing and cover the entire audio duration.
-                `;
+당신은 전문 속기사입니다. 이 오디오 파일의 음성을 정확하게 텍스트로 변환하세요.
+
+## 핵심 원칙
+- **정확성 최우선**: 들리는 그대로 받아적으세요. 문법 수정이나 의역을 하지 마세요.
+- **한국어 특성**: 조사(은/는/이/가), 어미(-요/-어/-지), 축약형(뭐→뭘, 거→걸)을 원음 그대로 기록하세요.
+- **가사/노래**: 음악이나 노래가 포함된 경우, 가사를 정확히 받아적으세요.
+- **일관성**: 같은 단어는 항상 같은 표기를 사용하세요.
+
+## 출력 언어: ${targetLangFull}
+
+## 출력 형식: JSON만 출력 (마크다운 코드블록 없이)
+{
+    "segments": [
+        { "start": 0.0, "end": 3.2, "text": "정확한 음성 텍스트", "confidence": 0.95 }
+    ],
+    "summary": "1문장 주제 요약",
+    "keywords": ["키워드1", "키워드2"]
+}
+
+## 타이밍 규칙 (매우 중요)
+1. start, end는 반드시 **총 초(seconds)** 단위입니다. (예: 2분 30초 = 150.0, NOT 2.30)
+2. 3분짜리 오디오의 마지막 세그먼트 end는 약 180.0이어야 합니다.
+3. 세그먼트 길이: 2~5초
+4. 타임스탬프는 단조 증가해야 합니다.
+5. 무음/잡음 구간은 제외하세요.
+6. confidence: 오디오 명확도 기반 (0.0~1.0)
+7. 세그먼트 간 빈 구간(gap)이 없도록, 실제 음성이 있는 모든 구간을 빠짐없이 포함하세요.
+`;
 
                 const result = await model.generateContent([
                     {
@@ -258,7 +264,10 @@ async function correctTextWithGemini(audioPath, whisperSegments, targetLanguage 
         for (const modelName of CORRECTION_MODELS) {
             try {
                 console.log(`[AI-Correct] Trying ${modelName}...`);
-                const model = genAI.getGenerativeModel({ model: modelName });
+                const model = genAI.getGenerativeModel({
+                    model: modelName,
+                    generationConfig: { temperature: 0, topP: 1, topK: 1 },
+                });
 
                 const result = await model.generateContent([
                     {
