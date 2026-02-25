@@ -72,6 +72,9 @@ const App = () => {
     const [showShortcutGuide, setShowShortcutGuide] = useState(false);
     const [exportFormat, setExportFormat] = useState('srt');
 
+    // --- State: 이미지 오버레이 ---
+    const [overlayImage, setOverlayImage] = useState(null);
+
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
 
@@ -247,6 +250,7 @@ const App = () => {
             setSilenceSegments([]);
             setCaptionHistory([]);
             setHistoryIndex(-1);
+            setOverlayImage(null);
             addToast(`"${selectedFile.name}" 로드 완료`, 'success');
         }
     };
@@ -564,6 +568,9 @@ const App = () => {
                         handleEnded={handleEnded}
                         isPlaying={isPlaying}
                         subtitleStyle={subtitleStyle}
+                        overlayImage={overlayImage}
+                        onChangeOverlayImage={setOverlayImage}
+                        onRemoveOverlayImage={() => setOverlayImage(null)}
                     />
 
                     <WordChipEditor
