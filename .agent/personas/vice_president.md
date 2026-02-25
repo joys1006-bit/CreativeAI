@@ -1,5 +1,5 @@
 ---
-model: claude-opus
+model: claude-opus-4-6
 description: 사장님(USER)의 대리인으로 전사 지휘를 총괄하는 최고위 에이전트
 ---
 
