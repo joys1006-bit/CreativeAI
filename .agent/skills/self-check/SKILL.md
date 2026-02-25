@@ -32,6 +32,11 @@ description: 실수 방지를 위한 자기 점검 체크리스트 및 교훈 �
 - **원인**: JSX만 수정하고 CSS 레이아웃 영향 분석 안 함
 - **교훈**: **컴포넌트 구조 변경 시 반드시 CSS 레이아웃 flow 재검증**
 
+### 5. 글로벌 CSS가 컴포넌트 스타일을 덮어쓸 수 있다
+- **사건**: `index.css`의 `button { padding: 12px 24px; border-radius: 12px; }` 글로벌 규칙이 `.tool-btn`의 스타일을 덮어씀
+- **원인**: 기본 `button` 셀렉터와 `.tool-btn` 셀렉터의 specificity가 같아서 로드 순서에 따라 결정
+- **교훈**: **새 컴포넌트 CSS 작성 시, 반드시 글로벌 리셋 CSS(reset/normalize/index.css)와의 충돌 여부를 확인.** 필요시 부모 스코프 리셋 또는 `!important` 사용
+
 ---
 
 ## ✅ 작업 전 체크리스트

@@ -73,6 +73,16 @@
 }
 
 /* ===== RibbonToolbar 컴포넌트 기본 스타일 ===== */
+
+/* 글로벌 button 스타일 리셋 — index.css 충돌 방지 */
+.ribbon-toolbar button {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-weight: inherit;
+    background: none;
+}
+
 .ribbon-toolbar {
     display: flex;
     flex-direction: column;
@@ -83,11 +93,11 @@
 
 .ribbon-tabs {
     display: flex;
+    flex-direction: row;
     gap: 0;
     padding: 0 16px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-surface);
-    overflow-x: auto;
 }
 
 .ribbon-tab {
@@ -96,37 +106,38 @@
     font-size: 13px;
     font-weight: 500;
     color: var(--text-dim);
-    border: none;
-    background: none;
-    border-bottom: 2px solid transparent;
+    border: none !important;
+    background: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
     transition: all 0.2s ease;
     white-space: nowrap;
 }
 
 .ribbon-tab:hover {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.04) !important;
 }
 
 .ribbon-tab.active {
     color: var(--primary-light);
-    border-bottom-color: var(--primary);
+    border-bottom-color: var(--primary) !important;
 }
 
 /* 리본 컨텐츠 영역 — 탭 아래 도구 패널 */
 .ribbon-content {
     display: flex;
-    align-items: stretch;
-    padding: 8px 16px;
-    min-height: 64px;
-    overflow-x: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 16px;
+    min-height: 60px;
 }
 
 /* 도구 전체 행 — tool-section들을 가로 배치 */
 .ribbon-group {
     display: flex;
-    flex-direction: row;
-    align-items: stretch;
+    flex-direction: row !important;
+    align-items: center;
     gap: 0;
     width: 100%;
 }
@@ -134,9 +145,9 @@
 /* 리본 구분선 — 세로 */
 .ribbon-divider {
     width: 1px;
-    align-self: stretch;
+    height: 40px;
     background: var(--border);
-    margin: 4px 16px;
+    margin: 0 16px;
     flex-shrink: 0;
 }
 
@@ -144,8 +155,8 @@
 .tool-section {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 0;
+    align-items: flex-start;
+    gap: 4px;
 }
 
 /* 섹션 라벨 — 카테고리명 */
@@ -155,7 +166,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
-    padding-left: 4px;
+    padding-left: 2px;
     white-space: nowrap;
     line-height: 1;
 }
@@ -166,19 +177,18 @@
     flex-direction: row;
     align-items: center;
     gap: 6px;
-    flex-wrap: nowrap;
 }
 
 /* 도구 버튼 */
 .tool-btn {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     gap: 6px;
-    padding: 6px 14px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
+    padding: 7px 14px !important;
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
     color: var(--text);
-    border-radius: 8px;
+    border-radius: 8px !important;
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
@@ -189,8 +199,8 @@
 }
 
 .tool-btn:hover {
-    background: var(--bg-hover);
-    border-color: var(--primary-light);
+    background: var(--bg-hover) !important;
+    border-color: var(--primary-light) !important;
     transform: translateY(-1px);
 }
 
@@ -201,9 +211,9 @@
 }
 
 .tool-btn.primary {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark, #5b21b6) 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark, #5b21b6) 100%) !important;
     color: #fff;
-    border-color: transparent;
+    border-color: transparent !important;
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
@@ -239,19 +249,19 @@
 }
 
 .mini-btn {
-    padding: 4px 8px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
+    padding: 4px 8px !important;
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
     color: var(--text-secondary);
-    border-radius: 6px;
+    border-radius: 6px !important;
     cursor: pointer;
     font-size: 11px;
     transition: all 0.15s;
 }
 
 .mini-btn:hover {
-    background: var(--bg-hover);
-    border-color: var(--primary-light);
+    background: var(--bg-hover) !important;
+    border-color: var(--primary-light) !important;
 }
 
 .tabs-container {
