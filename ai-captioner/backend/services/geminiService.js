@@ -239,25 +239,33 @@ async function correctTextWithGemini(audioPath, whisperSegments, targetLanguage 
         ).join('\n');
 
         const prompt = `
-역할: 당신은 대한민국 최고의 영상 자막 교정 전문가이자 국어국문학 박사입니다.
- 
- 아래는 AI(Whisper)가 자동 생성한 자막 리스트입니다. 오디오 파일을 직접 청취하고 분석하여, 실제 발화 내용과 일치하도록 정밀 교정을 수행하세요.
- 
- [자동 생성 자막 리스트]
- ${segmentsForPrompt}
- 
- [교정 절대 원칙]
- 1. **문맥상 오류 수정**: 주변 문맥을 고려하여 잘못 인식된 단어(동음이의어 포함)를 발화 의도에 맞게 교정하세요.
- 2. **표준어 및 맞춤법**: 최신 국립국어원 표준어 규정과 맞춤법, 띄어쓰기를 완벽하게 적용하세요.
- 3. **가독성 향상**: 너무 긴 문장은 자막 가독성을 위해 적절한 쉼표나 어휘로 다듬으세요 (단, 발화 내용은 유지).
- 4. **타이밍 보존**: 각 세그먼트의 'index'와 '타이밍(start, end)'은 절대 건드리지 마세요. 텍스트만 교정합니다.
- 5. **특수문자 처리**: 발화 중의 감탄사, 물음표 등을 문맥에 맞게 적절히 사용하세요.
- 
- [출력 가이드]
- - 오직 JSON 배열 포맷으로만 응답하세요.
- - 형식을 엄수하세요: [ { "index": n, "text": "교정 내용" }, ... ]
- - 교정이 필요한 세그먼트만 포함하고, 완벽한 세그먼트는 제외하세요.
- - 교정할 내용이 전혀 없다면 빈 배열 []을 반환하세요.
+역할: 당신은 대한민국 최고의 영상 자막 교정 전문가이자 음성/음악 분석 전문가입니다.
+
+아래는 AI(Whisper)가 자동 생성한 자막 리스트입니다. **오디오 파일을 직접 청취**하여 실제 발화/가사와 비교 분석하고, 텍스트와 타이밍을 모두 정밀 보정하세요.
+
+[자동 생성 자막 리스트]
+${segmentsForPrompt}
+
+[핵심 교정 원칙]
+
+**A. 타이밍 보정 (가장 중요!)**
+1. **전주/간주 감지**: 음악의 전주(인트로), 간주(인터루드), 아웃트로 등 보컬이 없는 구간에 자막이 배치되어 있으면, 실제 보컬이 시작되는 정확한 시점으로 타이밍을 이동하세요.
+2. **보컬 시작점 정밀 매칭**: 오디오를 듣고 각 가사/발화가 실제로 시작하는 정확한 초(second)를 판단하세요.
+3. **겹침 방지**: 보정 후에도 세그먼트 간 시간이 겹치지 않도록 하세요.
+4. **순서 유지**: 세그먼트의 시간 순서는 반드시 유지하세요.
+
+**B. 텍스트 교정**
+1. 문맥 기반 오류 수정 (동음이의어, 오인식 단어)
+2. 한국어 표준어 맞춤법 적용
+3. 가독성 향상 (성 유지)
+
+[출력 가이드]
+- 오직 JSON 배열 포맷으로만 응답하세요.
+- 형식: [ { "index": n, "text": "교정 내용", "start": 시작초, "end": 종료초 }, ... ]
+- text: 교정된 텍스트 (변경 없으면 원본 그대로)
+- start/end: 보정된 타이밍 (초 단위, 소수점 2자리). 타이밍 변경 불필요 시 원본 값 그대로 포함
+- **모든 세그먼트를 포함하세요** (교정 여부와 관계없이 전체 배열 반환)
+- 전주/간주에 걸린 자막을 올바른 시점으로 이동하는 것이 최우선입니다.
 `;
 
         let lastError = null;
@@ -294,14 +302,28 @@ async function correctTextWithGemini(audioPath, whisperSegments, targetLanguage 
                 const corrections = JSON.parse(text.substring(arrStart, arrEnd + 1));
                 console.log(`[AI-Correct] ${corrections.length} corrections from ${modelName}`);
 
-                // Apply corrections to Whisper segments
+                // Apply corrections (text + timing) to Whisper segments
                 const corrected = [...whisperSegments];
                 for (const fix of corrections) {
-                    if (fix.index >= 0 && fix.index < corrected.length && fix.text) {
-                        console.log(`  [${fix.index}] "${corrected[fix.index].text}" → "${fix.text}"`);
-                        corrected[fix.index].text = fix.text;
+                    if (fix.index >= 0 && fix.index < corrected.length) {
+                        if (fix.text) {
+                            console.log(`  [${fix.index}] text: "${corrected[fix.index].text}" → "${fix.text}"`);
+                            corrected[fix.index].text = fix.text;
+                        }
+                        // 타이밍 보정 적용
+                        if (fix.start != null && typeof fix.start === 'number') {
+                            console.log(`  [${fix.index}] start: ${corrected[fix.index].start.toFixed(2)}s → ${fix.start.toFixed(2)}s`);
+                            corrected[fix.index].start = fix.start;
+                        }
+                        if (fix.end != null && typeof fix.end === 'number') {
+                            console.log(`  [${fix.index}] end: ${corrected[fix.index].end.toFixed(2)}s → ${fix.end.toFixed(2)}s`);
+                            corrected[fix.index].end = fix.end;
+                        }
                     }
                 }
+
+                // 타이밍 순서 재정렬
+                corrected.sort((a, b) => a.start - b.start);
 
                 await fileManager.deleteFile(name).catch(() => { });
                 return corrected;

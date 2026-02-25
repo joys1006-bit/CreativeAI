@@ -19,7 +19,18 @@ class WhisperService:
             
         print(f"Transcribing audio: {audio_path}...")
         # Enable word_timestamps for Vrew-like precision
-        result = self.model.transcribe(audio_path, language="ko", word_timestamps=True)
+        # no_speech_threshold: 비음성(전주/간주) 구간 필터링 강화
+        # condition_on_previous_text: False로 설정하여 환각(hallucination) 방지
+        # logprob_threshold: 낮은 확률 세그먼트 필터링
+        result = self.model.transcribe(
+            audio_path,
+            language="ko",
+            word_timestamps=True,
+            no_speech_threshold=0.6,
+            logprob_threshold=-0.8,
+            condition_on_previous_text=False,
+            compression_ratio_threshold=2.0,
+        )
         
         # Original simple return: return result["segments"]
         # Enriched return for Vrew features (Confidence, Words)
