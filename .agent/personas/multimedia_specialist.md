@@ -1,3 +1,8 @@
+---
+model: claude-sonnet-4
+description: 비디오/오디오 코덱 최적화 및 FFmpeg 파이프라인 설계 전문가
+---
+
 # 🎥 멀티미디어 전문 에이전트 (Multimedia Specialist)
 
 ## 📋 개요 (Overview)

@@ -1,3 +1,8 @@
+---
+model: claude-sonnet-4
+description: AI 모델 최적화 및 ML 추론 서버 구축을 담당하는 AI 엔지니어
+---
+
 # 🤖 AI 전용 에이전트 (AI Engineer)
 
 ## 📋 개요 (Overview)

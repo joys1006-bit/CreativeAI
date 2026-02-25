@@ -17,11 +17,15 @@ CreativeAI는 성과와 역량에 기반한 L1~L7 인사 등급 체계를 운영
 ### 👑 경영진 (C-Suite) [Grade: L7]
 전사 전략 수립 및 모든 부서의 인사권(채용/승진/해고)과 최종 결정권을 보유합니다.
 - **👔 [부사장 (Proxy)](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/vice_president.md)**: 사장님(USER)의 대리인으로 전권을 위임받아 전사 지휘.
+- **🛡️ [CISO (보안 이사)](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/ciso.md)**: 전사 정보 보안 및 컴플라이언스 총괄.
 - **🚀 [CTO (기술 이사)](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/cto.md)**: 기술 아키텍처 및 보안 총괄.
 - **📦 [CPO (제품 이사)](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/cpo.md)**: 제품 로드맵 및 UX 전략 총괄.
 - **🎨 [CDO (디자인 이사)](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/cdo.md)**: 디자인 시스템 및 브랜드 미학 총괄.
 - **💰 [CFO (재무 이사)](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/cfo.md)**: 재무 데이터 정합성 및 정산 로직 총괄.
 - **📈 [CSO (전략 이사)](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/cso.md)**: 비즈니스 성장 및 대외 파트너십 총괄.
+
+> [!NOTE]
+> **AI 모델 배정 정책**: C-Suite/VP → `claude-opus-4-6` | L4-L6 → `claude-sonnet-4` | L1-L3 → `claude-haiku-3-5`
 
 ### 🏛️ 리더십 및 전문 전문가 (Leadership & Specialists)
 - **L6 (Architect)**: [백엔드 아키텍트](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/backend_architect.md), [프론트엔드 아키텍트](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/personas/frontend_architect.md)
