@@ -19,6 +19,7 @@ import DropZone from './components/DropZone';
 import PlaybackSpeed from './components/PlaybackSpeed';
 import SubtitleSearch from './components/SubtitleSearch';
 import SubtitleStats from './components/SubtitleStats';
+import VideoExporter from './components/VideoExporter';
 import { ThemeToggle } from './components/ThemeProvider';
 
 const API_BASE = 'http://localhost:8000';
@@ -81,6 +82,7 @@ const App = () => {
     // --- State: Phase 1 새 기능 ---
     const [showSearch, setShowSearch] = useState(false);
     const [showStats, setShowStats] = useState(false);
+    const [showVideoExporter, setShowVideoExporter] = useState(false);
 
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
@@ -604,6 +606,17 @@ const App = () => {
                     <div className="header-right">
                         {status === 'completed' && <span className="status-badge">✅ 분석 완료</span>}
                         <button
+                            style={{
+                                background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                                border: 'none', cursor: 'pointer', fontSize: '12px',
+                                padding: '6px 14px', borderRadius: '8px', color: '#fff',
+                                fontWeight: 600, display: previewUrl ? 'inline-flex' : 'none',
+                                alignItems: 'center', gap: '4px',
+                            }}
+                            onClick={() => setShowVideoExporter(true)}
+                            title="동영상 내보내기"
+                        >🎬 내보내기</button>
+                        <button
                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px' }}
                             onClick={() => setShowStats(prev => !prev)}
                             title="자막 통계"
@@ -755,6 +768,17 @@ const App = () => {
                 <ShortcutGuide
                     isVisible={showShortcutGuide}
                     onClose={() => setShowShortcutGuide(false)}
+                />
+
+                <VideoExporter
+                    isVisible={showVideoExporter}
+                    onClose={() => setShowVideoExporter(false)}
+                    previewUrl={previewUrl}
+                    captions={captions}
+                    syncOffset={syncOffset}
+                    subtitleStyle={subtitleStyle}
+                    overlayImage={overlayImage}
+                    duration={duration}
                 />
             </div>
         </DropZone>

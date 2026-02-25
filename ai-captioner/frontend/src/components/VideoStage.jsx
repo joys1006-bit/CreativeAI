@@ -134,6 +134,7 @@ const VideoStage = ({
             opacity: showControls ? 1 : 0,
         },
         subtitleBase: {
+            position: 'absolute',
             zIndex: 6,
             fontFamily: subtitleStyle.fontFamily || "'Pretendard', sans-serif",
             fontSize: `${subtitleStyle.fontSize || 24}px`,
@@ -147,6 +148,7 @@ const VideoStage = ({
             left: '50%', transform: 'translateX(-50%)',
             whiteSpace: 'normal', wordBreak: 'keep-all',
             cursor: 'pointer',
+            ...getSubtitlePosition(),
         },
         editInput: {
             background: 'rgba(0,0,0,0.8)',
@@ -253,10 +255,9 @@ const VideoStage = ({
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.2 }}
-                                    style={S.subtitleBase}
+                                    style={{ ...S.subtitleBase }}
                                     onDoubleClick={handleSubtitleDoubleClick}
                                     title="더블클릭하여 자막 편집"
-                                    {...getSubtitlePosition()}
                                 >
                                     {currentCaption.text}
                                 </motion.div>

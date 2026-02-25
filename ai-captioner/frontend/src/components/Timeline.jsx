@@ -17,8 +17,8 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
     const userScrollTimeout = useRef(null);
     const trackWidth = useMemo(() => Math.max(duration * zoomLevel, 200), [duration, zoomLevel]);
 
-    // 드래그 리사이즈 상태
-    const [dragging, setDragging] = useState(null); // { idx, edge: 'left'|'right', startX, origStart, origEnd }
+    // 드래그 리사이즈/이동 상태
+    const [dragging, setDragging] = useState(null); // { idx, edge: 'left'|'right'|'move', startX, origStart, origEnd }
 
     /* 드래그 리사이즈 핸들러 */
     const handleDragStart = useCallback((e, idx, edge) => {
@@ -44,9 +44,14 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
             if (dragging.edge === 'left') {
                 const newStart = Math.max(0, Math.min(dragging.origStart + dt, dragging.origEnd - 0.2));
                 onUpdateCaptionTiming?.(dragging.idx, newStart, dragging.origEnd);
-            } else {
+            } else if (dragging.edge === 'right') {
                 const newEnd = Math.max(dragging.origStart + 0.2, Math.min(dragging.origEnd + dt, duration));
                 onUpdateCaptionTiming?.(dragging.idx, dragging.origStart, newEnd);
+            } else if (dragging.edge === 'move') {
+                const clipDuration = dragging.origEnd - dragging.origStart;
+                let newStart = dragging.origStart + dt;
+                newStart = Math.max(0, Math.min(newStart, duration - clipDuration));
+                onUpdateCaptionTiming?.(dragging.idx, newStart, newStart + clipDuration);
             }
         };
 
@@ -282,15 +287,22 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
                                         width: `${clipWidth}px`,
                                         position: 'absolute',
                                         border: isDraggingThis ? '1px solid rgba(139,92,246,0.6)' : undefined,
+                                        cursor: isDraggingThis ? 'grabbing' : 'grab',
+                                        userSelect: 'none',
+                                    }}
+                                    onMouseDown={(e) => {
+                                        // 핸들이 아닌 본체에서만 move 시작
+                                        if (e.target.dataset.handle) return;
+                                        handleDragStart(e, idx, 'move');
                                     }}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (onSeek) onSeek(start);
+                                        if (!dragging && onSeek) onSeek(start);
                                     }}
                                     title={cap.text}
                                 >
-                                    {/* 좌측 드래그 핸들 */}
                                     <div
+                                        data-handle="left"
                                         style={{ ...handleStyle, left: 0 }}
                                         onMouseDown={(e) => handleDragStart(e, idx, 'left')}
                                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.5)'}
@@ -302,8 +314,8 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
                                         {cap.text}
                                     </span>
 
-                                    {/* 우측 드래그 핸들 */}
                                     <div
+                                        data-handle="right"
                                         style={{ ...handleStyle, right: 0 }}
                                         onMouseDown={(e) => handleDragStart(e, idx, 'right')}
                                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.5)'}
