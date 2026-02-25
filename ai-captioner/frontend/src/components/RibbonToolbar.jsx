@@ -48,31 +48,37 @@ const RibbonToolbar = ({
                     <div className="ribbon-group">
                         <div className="tool-section">
                             <span className="section-label">파일</span>
-                            <button className="tool-btn" onClick={onSelectFile} disabled={isProcessing}>
-                                <span className="tool-icon">📂</span><span>영상 불러오기</span>
-                            </button>
+                            <div className="tool-buttons">
+                                <button className="tool-btn" onClick={onSelectFile} disabled={isProcessing}>
+                                    <span className="tool-icon">📂</span><span>영상 불러오기</span>
+                                </button>
+                            </div>
                         </div>
                         <div className="ribbon-divider" />
                         <div className="tool-section">
                             <span className="section-label">AI 엔진</span>
-                            <button className="tool-btn primary" onClick={onStartAnalysis} disabled={!hasFile || isProcessing}>
-                                <span className="tool-icon">🤖</span><span>AI 자동 자막</span>
-                            </button>
-                            <button className="tool-btn" onClick={onToggleInsight} disabled={!hasCaptions}>
-                                <span className="tool-icon">{showInsight ? '📊' : '📈'}</span><span>AI 분석</span>
-                            </button>
+                            <div className="tool-buttons">
+                                <button className="tool-btn primary" onClick={onStartAnalysis} disabled={!hasFile || isProcessing}>
+                                    <span className="tool-icon">🤖</span><span>AI 자동 자막</span>
+                                </button>
+                                <button className="tool-btn" onClick={onToggleInsight} disabled={!hasCaptions}>
+                                    <span className="tool-icon">{showInsight ? '📊' : '📈'}</span><span>AI 분석</span>
+                                </button>
+                            </div>
                         </div>
                         <div className="ribbon-divider" />
                         <div className="tool-section">
                             <span className="section-label">무음 처리</span>
-                            <button className="tool-btn" onClick={onDetectSilence} disabled={!hasFile || isProcessing}>
-                                <span className="tool-icon">🔇</span><span>무음 탐지</span>
-                            </button>
-                            {silenceCount > 0 && (
-                                <button className="tool-btn warning" onClick={onRemoveSilence}>
-                                    <span className="tool-icon">✂️</span><span>무음 제거 ({silenceCount})</span>
+                            <div className="tool-buttons">
+                                <button className="tool-btn" onClick={onDetectSilence} disabled={!hasFile || isProcessing}>
+                                    <span className="tool-icon">🔇</span><span>무음 탐지</span>
                                 </button>
-                            )}
+                                {silenceCount > 0 && (
+                                    <button className="tool-btn warning" onClick={onRemoveSilence}>
+                                        <span className="tool-icon">✂️</span><span>무음 제거 ({silenceCount})</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -81,30 +87,36 @@ const RibbonToolbar = ({
                     <div className="ribbon-group">
                         <div className="tool-section">
                             <span className="section-label">실행 취소</span>
-                            <button className="tool-btn" onClick={onUndo} disabled={!canUndo}>
-                                <span className="tool-icon">↩️</span><span>되돌리기</span>
-                            </button>
-                            <button className="tool-btn" onClick={onRedo} disabled={!canRedo}>
-                                <span className="tool-icon">↪️</span><span>다시하기</span>
-                            </button>
+                            <div className="tool-buttons">
+                                <button className="tool-btn" onClick={onUndo} disabled={!canUndo}>
+                                    <span className="tool-icon">↩️</span><span>되돌리기</span>
+                                </button>
+                                <button className="tool-btn" onClick={onRedo} disabled={!canRedo}>
+                                    <span className="tool-icon">↪️</span><span>다시하기</span>
+                                </button>
+                            </div>
                         </div>
                         <div className="ribbon-divider" />
                         <div className="tool-section">
                             <span className="section-label">자막 스타일</span>
-                            <button className="tool-btn" onClick={onToggleStylePanel} disabled={!hasCaptions}>
-                                <span className="tool-icon">🎨</span><span>스타일 편집</span>
-                            </button>
-                            <button className="tool-btn" onClick={onToggleTemplate}>
-                                <span className="tool-icon">📐</span><span>숏폼 템플릿</span>
-                            </button>
+                            <div className="tool-buttons">
+                                <button className="tool-btn" onClick={onToggleStylePanel} disabled={!hasCaptions}>
+                                    <span className="tool-icon">🎨</span><span>스타일 편집</span>
+                                </button>
+                                <button className="tool-btn" onClick={onToggleTemplate}>
+                                    <span className="tool-icon">📐</span><span>숏폼 템플릿</span>
+                                </button>
+                            </div>
                         </div>
                         <div className="ribbon-divider" />
                         <div className="tool-section">
                             <span className="section-label">싱크 조절</span>
-                            <div className="sync-control">
-                                <button className="mini-btn" onClick={() => setSyncOffset(prev => prev - 0.1)}>-0.1s</button>
-                                <span className="sync-value">{syncOffset >= 0 ? '+' : ''}{syncOffset.toFixed(1)}s</span>
-                                <button className="mini-btn" onClick={() => setSyncOffset(prev => prev + 0.1)}>+0.1s</button>
+                            <div className="tool-buttons">
+                                <div className="sync-control">
+                                    <button className="mini-btn" onClick={() => setSyncOffset(prev => prev - 0.1)}>-0.1s</button>
+                                    <span className="sync-value">{syncOffset >= 0 ? '+' : ''}{syncOffset.toFixed(1)}s</span>
+                                    <button className="mini-btn" onClick={() => setSyncOffset(prev => prev + 0.1)}>+0.1s</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -114,15 +126,17 @@ const RibbonToolbar = ({
                     <div className="ribbon-group">
                         <div className="tool-section">
                             <span className="section-label">자막 편집</span>
-                            <button className="tool-btn" onClick={onAddCaption} disabled={!hasFile}>
-                                <span className="tool-icon">➕</span><span>자막 추가</span>
-                            </button>
-                            <button className="tool-btn" onClick={onSplitCaption} disabled={!hasCaptions}>
-                                <span className="tool-icon">✂️</span><span>분할</span>
-                            </button>
-                            <button className="tool-btn" onClick={onMergeCaptions} disabled={!hasCaptions}>
-                                <span className="tool-icon">🔗</span><span>합치기</span>
-                            </button>
+                            <div className="tool-buttons">
+                                <button className="tool-btn" onClick={onAddCaption} disabled={!hasFile}>
+                                    <span className="tool-icon">➕</span><span>자막 추가</span>
+                                </button>
+                                <button className="tool-btn" onClick={onSplitCaption} disabled={!hasCaptions}>
+                                    <span className="tool-icon">✂️</span><span>분할</span>
+                                </button>
+                                <button className="tool-btn" onClick={onMergeCaptions} disabled={!hasCaptions}>
+                                    <span className="tool-icon">🔗</span><span>합치기</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -131,29 +145,33 @@ const RibbonToolbar = ({
                     <div className="ribbon-group">
                         <div className="tool-section">
                             <span className="section-label">AI 음성</span>
-                            <button className="tool-btn" onClick={onToggleTts} disabled={!hasCaptions}>
-                                <span className="tool-icon">🔊</span><span>TTS 음성</span>
-                            </button>
+                            <div className="tool-buttons">
+                                <button className="tool-btn" onClick={onToggleTts} disabled={!hasCaptions}>
+                                    <span className="tool-icon">🔊</span><span>TTS 음성</span>
+                                </button>
+                            </div>
                         </div>
                         <div className="ribbon-divider" />
                         <div className="tool-section">
                             <span className="section-label">번역</span>
-                            <select
-                                className="translate-select"
-                                value={targetLang}
-                                onChange={(e) => setTargetLang(e.target.value)}
-                            >
-                                <option value="en">🇺🇸 영어</option>
-                                <option value="ja">🇯🇵 일본어</option>
-                                <option value="zh">🇨🇳 중국어</option>
-                                <option value="ko">🇰🇷 한국어</option>
-                            </select>
-                            <button className="tool-btn primary" onClick={() => onTranslate(targetLang)} disabled={!hasCaptions}>
-                                <span className="tool-icon">🌐</span><span>번역하기</span>
-                            </button>
-                            {hasTranslation && (
-                                <span className="translate-badge">✅</span>
-                            )}
+                            <div className="tool-buttons">
+                                <select
+                                    className="translate-select"
+                                    value={targetLang}
+                                    onChange={(e) => setTargetLang(e.target.value)}
+                                >
+                                    <option value="en">🇺🇸 영어</option>
+                                    <option value="ja">🇯🇵 일본어</option>
+                                    <option value="zh">🇨🇳 중국어</option>
+                                    <option value="ko">🇰🇷 한국어</option>
+                                </select>
+                                <button className="tool-btn primary" onClick={() => onTranslate(targetLang)} disabled={!hasCaptions}>
+                                    <span className="tool-icon">🌐</span><span>번역하기</span>
+                                </button>
+                                {hasTranslation && (
+                                    <span className="translate-badge">✅</span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -162,12 +180,14 @@ const RibbonToolbar = ({
                     <div className="ribbon-group">
                         <div className="tool-section">
                             <span className="section-label">내보내기</span>
-                            <button className="tool-btn primary" onClick={onExportVideo} disabled={!hasCaptions || isProcessing}>
-                                <span className="tool-icon">🎬</span><span>영상 내보내기</span>
-                            </button>
-                            <button className="tool-btn" onClick={onExportSRT} disabled={!hasCaptions}>
-                                <span className="tool-icon">📄</span><span>SRT 저장</span>
-                            </button>
+                            <div className="tool-buttons">
+                                <button className="tool-btn primary" onClick={onExportVideo} disabled={!hasCaptions || isProcessing}>
+                                    <span className="tool-icon">🎬</span><span>영상 내보내기</span>
+                                </button>
+                                <button className="tool-btn" onClick={onExportSRT} disabled={!hasCaptions}>
+                                    <span className="tool-icon">📄</span><span>SRT 저장</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

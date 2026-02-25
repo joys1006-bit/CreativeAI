@@ -49,6 +49,7 @@ CreativeAI는 성과와 역량에 기반한 L1~L7 인사 등급 체계를 운영
 - **[공통 코드 컨벤션](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/skills/code-convention/SKILL.md)**: CSS 포함 전사 표준
 - **[성능 합동 진단](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/skills/performance-audit/SKILL.md)**: 3각 합동 성능 진단
 - **[품질 게이트](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/skills/quality-gate/SKILL.md)**: QA 관장 품질 체크리스트 🆕
+- **[자기 점검](file:///c:/Users/FORYOUCOM/.gemini/antigravity/scratch/.agent/skills/self-check/SKILL.md)**: 실수 방지 교훈 기록 + 체크리스트 🆕
 
 ---
 
