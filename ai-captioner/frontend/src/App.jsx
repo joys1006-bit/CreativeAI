@@ -79,6 +79,9 @@ const App = () => {
     // --- State: 이미지 오버레이 ---
     const [overlayImage, setOverlayImage] = useState(null);
 
+    // --- State: 자막 위치 (드래그) ---
+    const [subtitlePos, setSubtitlePos] = useState(null); // { x: %, y: % }
+
     // --- State: Phase 1 새 기능 ---
     const [showSearch, setShowSearch] = useState(false);
     const [showStats, setShowStats] = useState(false);
@@ -141,6 +144,7 @@ const App = () => {
                     captions,
                     syncOffset,
                     subtitleStyle,
+                    subtitlePos,
                     overlayImage,
                     status,
                     fileName: file?.name || null,
@@ -150,7 +154,7 @@ const App = () => {
             } catch (e) { console.warn('세션 저장 실패:', e); }
         }, 3000);
         return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-    }, [captions, syncOffset, subtitleStyle, overlayImage, status, file]);
+    }, [captions, syncOffset, subtitleStyle, subtitlePos, overlayImage, status, file]);
 
     // 비디오 파일 변경 시 IndexedDB에 저장
     useEffect(() => {
@@ -175,6 +179,7 @@ const App = () => {
                 if (session.captions?.length > 0) setCaptions(session.captions);
                 if (session.syncOffset != null) setSyncOffset(session.syncOffset);
                 if (session.subtitleStyle) setSubtitleStyle(session.subtitleStyle);
+                if (session.subtitlePos) setSubtitlePos(session.subtitlePos);
                 if (session.overlayImage) setOverlayImage(session.overlayImage);
                 if (session.status && session.status !== 'idle') setStatus(session.status);
 
@@ -345,6 +350,20 @@ const App = () => {
                         document.exitFullscreen?.();
                     }
                     break;
+                case 'BracketLeft':  // [ 키: 싱크 -0.5초
+                    e.preventDefault();
+                    setSyncOffset(prev => {
+                        const v = Math.round((prev - 0.5) * 10) / 10;
+                        return v;
+                    });
+                    break;
+                case 'BracketRight': // ] 키: 싱크 +0.5초
+                    e.preventDefault();
+                    setSyncOffset(prev => {
+                        const v = Math.round((prev + 0.5) * 10) / 10;
+                        return v;
+                    });
+                    break;
                 default:
                     break;
             }
@@ -409,10 +428,14 @@ const App = () => {
 
                     const res = await axios.get(`${API_BASE}/status/${jobId}`);
                     if (res.data.status === 'COMPLETED') {
-                        const segments = (res.data.segments || []).map((seg, i) => ({
-                            ...seg,
-                            id: seg.id || `seg_${i}_${Date.now()}`
-                        }));
+                        const videoDuration = videoRef.current?.duration || duration || Infinity;
+                        const segments = (res.data.segments || [])
+                            .filter(seg => seg.start < videoDuration) // 영상 길이 초과 자막 제거
+                            .map((seg, i) => ({
+                                ...seg,
+                                end: Math.min(seg.end, videoDuration), // end 클램프
+                                id: seg.id || `seg_${i}_${Date.now()}`
+                            }));
                         setCaptions(segments);
                         setAiAnalysis({
                             summary: res.data.summary,
@@ -778,6 +801,8 @@ const App = () => {
                         onChangeOverlayImage={setOverlayImage}
                         onRemoveOverlayImage={() => setOverlayImage(null)}
                         onUpdateCaption={updateCaption}
+                        subtitlePos={subtitlePos}
+                        onSubtitlePosChange={setSubtitlePos}
                     />
 
                     <WordChipEditor

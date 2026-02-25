@@ -15,6 +15,7 @@ const VideoStage = ({
     isPlaying, subtitleStyle = {},
     overlayImage, onChangeOverlayImage, onRemoveOverlayImage,
     onUpdateCaption,
+    subtitlePos, onSubtitlePosChange,
 }) => {
     const [showPlayIcon, setShowPlayIcon] = useState(false);
     const [showControls, setShowControls] = useState(false);
@@ -23,6 +24,46 @@ const VideoStage = ({
     const editInputRef = useRef(null);
     const timeoutRef = useRef(null);
     const controlsTimeoutRef = useRef(null);
+    const [isDraggingSub, setIsDraggingSub] = useState(false);
+    const dragStartRef = useRef(null);
+    const stageContainerRef = useRef(null);
+
+    // 자막 드래그 이동 핸들러
+    const handleSubDragStart = (e) => {
+        if (isEditingSubtitle) return;
+        e.stopPropagation();
+        e.preventDefault();
+        setIsDraggingSub(true);
+        dragStartRef.current = {
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            startLeft: subtitlePos?.x ?? 50,
+            startTop: subtitlePos?.y ?? 85,
+        };
+    };
+
+    useEffect(() => {
+        if (!isDraggingSub) return;
+        const handleMove = (e) => {
+            if (!dragStartRef.current || !stageContainerRef.current) return;
+            const rect = stageContainerRef.current.getBoundingClientRect();
+            const dx = ((e.clientX - dragStartRef.current.mouseX) / rect.width) * 100;
+            const dy = ((e.clientY - dragStartRef.current.mouseY) / rect.height) * 100;
+            const newX = Math.max(5, Math.min(95, dragStartRef.current.startLeft + dx));
+            const newY = Math.max(5, Math.min(95, dragStartRef.current.startTop + dy));
+            onSubtitlePosChange?.({ x: newX, y: newY });
+        };
+        const handleUp = () => {
+            setIsDraggingSub(false);
+            dragStartRef.current = null;
+        };
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleUp);
+        return () => {
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleUp);
+        };
+    }, [isDraggingSub, onSubtitlePosChange]);
 
     useEffect(() => {
         return () => {
@@ -53,6 +94,15 @@ const VideoStage = ({
     };
 
     const getSubtitlePosition = () => {
+        // 사용자가 드래그로 위치를 지정했으면 그 위치 사용
+        if (subtitlePos && subtitlePos.x != null && subtitlePos.y != null) {
+            return {
+                left: `${subtitlePos.x}%`,
+                top: `${subtitlePos.y}%`,
+                bottom: 'auto',
+                transform: 'translate(-50%, -50%)',
+            };
+        }
         switch (subtitleStyle.position) {
             case 'top': return { top: '10%', bottom: 'auto' };
             case 'center': return { top: '50%', bottom: 'auto', transform: 'translate(-50%, -50%)' };
@@ -181,6 +231,7 @@ const VideoStage = ({
                     onMouseEnter={() => setShowControls(true)}
                     onMouseLeave={() => setShowControls(false)}
                     style={{ position: 'relative' }}
+                    ref={stageContainerRef}
                 >
                     {/* 원본 비디오 (오디오 소스) */}
                     <video
@@ -255,11 +306,23 @@ const VideoStage = ({
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.2 }}
-                                    style={{ ...S.subtitleBase }}
+                                    style={{
+                                        ...S.subtitleBase,
+                                        cursor: isDraggingSub ? 'grabbing' : 'grab',
+                                        userSelect: 'none',
+                                    }}
+                                    onMouseDown={handleSubDragStart}
                                     onDoubleClick={handleSubtitleDoubleClick}
-                                    title="더블클릭하여 자막 편집"
+                                    title="드래그: 위치 이동 / 더블클릭: 자막 편집"
                                 >
                                     {currentCaption.text}
+                                    {subtitlePos && (
+                                        <span style={{
+                                            position: 'absolute', top: '-18px', right: '0',
+                                            fontSize: '9px', color: 'rgba(255,255,255,0.4)',
+                                            pointerEvents: 'none',
+                                        }}>⤢ 드래그 이동</span>
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
