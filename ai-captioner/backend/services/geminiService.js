@@ -102,9 +102,11 @@ async function transcribeWithGemini(audioPath, targetLanguage = 'ko', retryCount
                 
                 Rules:
                 1. Segment length: 2-5 seconds.
-                2. Timestamps must be precise.
-                3. 'confidence': Estimate based on audio clarity (0.0 to 1.0).
-                4. If audio is silent/noise, exclude segment.
+                2. **CRITICAL**: 'start' and 'end' MUST be in TOTAL SECONDS (e.g., 2 minutes 30 seconds = 150.0, NOT 2.30).
+                3. Example: For a 3-minute audio, the last segment's 'end' should be around 180.0, NOT 3.0.
+                4. 'confidence': Estimate based on audio clarity (0.0 to 1.0).
+                5. If audio is silent/noise, exclude segment.
+                6. Timestamps should be monotonically increasing and cover the entire audio duration.
                 `;
 
                 const result = await model.generateContent([
@@ -129,11 +131,15 @@ async function transcribeWithGemini(audioPath, targetLanguage = 'ko', retryCount
                 const data = JSON.parse(text);
                 console.log(`[AI] Successfully transcribed with ${modelName}`);
 
+                // 타이밍 보정: Gemini가 분.초 형식(2.58=2분58초)으로 반환하는 경우 감지/수정
+                let segments = data.segments || [];
+                segments = fixMinuteSecondFormat(segments);
+
                 // Cleanup after success
                 await fileManager.deleteFile(name).catch(console.error);
 
                 return {
-                    segments: data.segments || [],
+                    segments,
                     summary: data.summary || "요약 불가",
                     keywords: data.keywords || [],
                     sentiment: data.sentiment || "분석 완료",
@@ -310,6 +316,45 @@ async function correctTextWithGemini(audioPath, whisperSegments, targetLanguage 
         if (fileUploadResult) await fileManager.deleteFile(fileUploadResult.file.name).catch(() => { });
         return whisperSegments; // Graceful fallback
     }
+}
+
+/**
+ * Gemini가 분.초(MM.SS) 형식으로 타이밍을 반환하는 경우를 감지하고 총 초 단위로 변환
+ * 예: 2.58(2분 58초) → 178초, 1.30(1분 30초) → 90초
+ * 
+ * 감지 조건:
+ * 1. 모든 세그먼트의 소수점 이하가 .00~.59 범위 (초는 0~59)
+ * 2. 최대 start 값이 영상 길이(분 단위)에 비해 비정상적으로 작음
+ */
+function fixMinuteSecondFormat(segments) {
+    if (!segments || segments.length < 3) return segments;
+
+    // 소수점 이하가 60 이상인 값이 있으면 이미 초 단위
+    const hasOver60Fraction = segments.some(s => {
+        const startFrac = Math.round((s.start % 1) * 100);
+        const endFrac = Math.round((s.end % 1) * 100);
+        return startFrac >= 60 || endFrac >= 60;
+    });
+    if (hasOver60Fraction) return segments; // 이미 올바른 형식
+
+    // 마지막 세그먼트의 end가 10 미만이고, 세그먼트가 10개 이상이면 분.초 형식으로 판단
+    const lastEnd = segments[segments.length - 1].end;
+    if (lastEnd >= 10 || segments.length < 10) return segments;
+
+    console.log(`[AI-Fix] 분.초 형식 감지! (lastEnd=${lastEnd}, segments=${segments.length}). 총 초 단위로 변환 중...`);
+
+    return segments.map(s => {
+        const startMin = Math.floor(s.start);
+        const startSec = Math.round((s.start % 1) * 100);
+        const endMin = Math.floor(s.end);
+        const endSec = Math.round((s.end % 1) * 100);
+
+        return {
+            ...s,
+            start: startMin * 60 + startSec,
+            end: endMin * 60 + endSec
+        };
+    });
 }
 
 module.exports = { transcribeWithGemini, correctTextWithGemini };
