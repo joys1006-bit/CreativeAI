@@ -11,6 +11,7 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
     const listRef = useRef(null);
     const lastScrollTime = useRef(0);
     const [userScrolling, setUserScrolling] = useState(false);
+    const [autoTrack, setAutoTrack] = useState(true);
     const userScrollTimeout = useRef(null);
 
     const formatTime = (s) => new Date(s * 1000).toISOString().substr(14, 5);
@@ -32,9 +33,9 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
         }
     }, [isPlaying]);
 
-    /* 스마트 자동 스크롤: 재생 중 + 사용자가 수동 스크롤 안 할 때만 */
+    /* 스마트 자동 스크롤: autoTrack ON + 재생 중 + 수동 스크롤 아닐 때 */
     useEffect(() => {
-        if (!isPlaying || userScrolling) return;
+        if (!autoTrack || !isPlaying || userScrolling) return;
 
         const now = Date.now();
         if (now - lastScrollTime.current < 300) return;
@@ -51,7 +52,7 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
                 lastScrollTime.current = now;
             }
         }
-    }, [currentTime, captions, isPlaying, userScrolling]);
+    }, [currentTime, captions, isPlaying, userScrolling, autoTrack]);
 
     useEffect(() => {
         return () => {
@@ -63,20 +64,25 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
         <div className="editor-container">
             <div className="editor-header">
                 <h3>편집 스크립트</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {isPlaying && (
-                        <span style={{
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                        onClick={() => setAutoTrack(prev => !prev)}
+                        style={{
                             fontSize: '10px',
-                            color: '#10b981',
-                            background: 'rgba(16,185,129,0.15)',
-                            padding: '2px 8px',
+                            color: autoTrack ? '#10b981' : '#6b6b8a',
+                            background: autoTrack ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                            padding: '3px 10px',
                             borderRadius: '10px',
                             fontWeight: 600,
-                            letterSpacing: '0.5px',
-                        }}>
-                            ● 자동 추적
-                        </span>
-                    )}
+                            letterSpacing: '0.3px',
+                            border: autoTrack ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                        }}
+                        title={autoTrack ? '자동 추적 끄기' : '자동 추적 켜기'}
+                    >
+                        {autoTrack ? '● 자동 추적' : '○ 추적 꺼짐'}
+                    </button>
                     <span className="segment-count">{captions.length}개의 블록</span>
                 </div>
             </div>

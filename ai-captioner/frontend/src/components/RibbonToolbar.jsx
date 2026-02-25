@@ -17,6 +17,7 @@ const RibbonToolbar = ({
     onDetectSilence, onRemoveSilence, silenceCount = 0,
     onToggleTts, onToggleTemplate,
     onTranslate, targetLang, setTargetLang, hasTranslation,
+    onImportSRT,
 }) => {
     const isProcessing = status === 'processing' || status === 'uploading';
     const [hoveredBtn, setHoveredBtn] = useState(null);
@@ -229,6 +230,9 @@ const RibbonToolbar = ({
                             <div style={S.buttonRow}>
                                 <button style={S.btn('file')} onClick={onSelectFile} disabled={isProcessing} {...hoverProps('file')}>
                                     <span style={S.icon}>📂</span><span>영상 불러오기</span>
+                                </button>
+                                <button style={S.btn('srt-import')} onClick={onImportSRT} {...hoverProps('srt-import')}>
+                                    <span style={S.icon}>📄</span><span>SRT 불러오기</span>
                                 </button>
                             </div>
                         </div>

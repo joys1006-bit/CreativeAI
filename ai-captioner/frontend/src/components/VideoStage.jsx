@@ -142,7 +142,7 @@ const VideoStage = ({
                         onPlay={handlePlay}
                         onPause={handlePause}
                         onEnded={handleEnded}
-                        style={overlayImage ? { opacity: 0, position: 'absolute' } : {}}
+                        style={overlayImage ? { visibility: 'hidden' } : {}}
                     />
 
                     {/* 이미지 오버레이 (교체된 이미지) */}
@@ -222,6 +222,13 @@ const VideoStage = ({
                                     textShadow: subtitleStyle.shadow ? '2px 2px 4px rgba(0,0,0,0.8)' : 'none',
                                     padding: '8px 16px',
                                     borderRadius: '6px',
+                                    maxWidth: '80%',
+                                    width: 'auto',
+                                    textAlign: 'center',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    whiteSpace: 'normal',
+                                    wordBreak: 'keep-all',
                                     ...getSubtitlePosition(),
                                 }}
                             >

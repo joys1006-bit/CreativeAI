@@ -16,6 +16,9 @@ import TtsPanel from './components/TtsPanel';
 import TemplateGallery from './components/TemplateGallery';
 import ShortcutGuide from './components/ShortcutGuide';
 import DropZone from './components/DropZone';
+import PlaybackSpeed from './components/PlaybackSpeed';
+import SubtitleSearch from './components/SubtitleSearch';
+import SubtitleStats from './components/SubtitleStats';
 import { ThemeToggle } from './components/ThemeProvider';
 
 const API_BASE = 'http://localhost:8000';
@@ -74,6 +77,10 @@ const App = () => {
 
     // --- State: 이미지 오버레이 ---
     const [overlayImage, setOverlayImage] = useState(null);
+
+    // --- State: Phase 1 새 기능 ---
+    const [showSearch, setShowSearch] = useState(false);
+    const [showStats, setShowStats] = useState(false);
 
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
@@ -224,6 +231,20 @@ const App = () => {
                     if (e.ctrlKey || e.metaKey) {
                         e.preventDefault();
                         handleExportSRT();
+                    }
+                    break;
+                case 'KeyF':
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        setShowSearch(prev => !prev);
+                    }
+                    break;
+                case 'F11':
+                    e.preventDefault();
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen?.();
+                    } else {
+                        document.exitFullscreen?.();
                     }
                     break;
                 default:
@@ -507,6 +528,67 @@ const App = () => {
         return new Date(s * 1000).toISOString().substr(14, 5);
     };
 
+    // === 자동 저장 (localStorage) ===
+    useEffect(() => {
+        if (captions.length > 0 && file) {
+            const data = { captions, fileName: file.name, savedAt: Date.now() };
+            localStorage.setItem('ai-captioner-autosave', JSON.stringify(data));
+        }
+    }, [captions, file]);
+
+    // === 자동 복원 ===
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('ai-captioner-autosave');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if (data.captions?.length > 0 && Date.now() - data.savedAt < 24 * 60 * 60 * 1000) {
+                    // 나중에 파일 로드 시 자동 복원 가능하도록 보관
+                    console.log(`[AutoSave] 복원 가능: ${data.fileName}, ${data.captions.length}개 자막`);
+                }
+            }
+        } catch (e) { /* ignore */ }
+    }, []);
+
+    // === SRT 파일 불러오기 ===
+    const handleImportSRT = useCallback(() => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.srt,.vtt,.txt';
+        input.onchange = (e) => {
+            const srtFile = e.target.files[0];
+            if (!srtFile) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const text = ev.target.result;
+                const segments = [];
+                // SRT 파싱
+                const blocks = text.trim().split(/\n\s*\n/);
+                blocks.forEach((block, i) => {
+                    const lines = block.trim().split('\n');
+                    if (lines.length < 3) return;
+                    const timeMatch = lines[1].match(/(\d{2}):(\d{2}):(\d{2})[,\.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,\.](\d{3})/);
+                    if (!timeMatch) return;
+                    const start = +timeMatch[1] * 3600 + +timeMatch[2] * 60 + +timeMatch[3] + +timeMatch[4] / 1000;
+                    const end = +timeMatch[5] * 3600 + +timeMatch[6] * 60 + +timeMatch[7] + +timeMatch[8] / 1000;
+                    const subtitleText = lines.slice(2).join(' ').trim();
+                    segments.push({ id: `srt_${i}_${Date.now()}`, start, end, text: subtitleText, confidence: 1.0 });
+                });
+                if (segments.length > 0) {
+                    setCaptions(segments);
+                    setCaptionHistory([JSON.parse(JSON.stringify(segments))]);
+                    setHistoryIndex(0);
+                    setStatus('completed');
+                    addToast(`📄 SRT 불러오기 성공! ${segments.length}개 자막`, 'success');
+                } else {
+                    addToast('SRT 파싱 실패: 유효한 자막을 찾을 수 없습니다', 'error');
+                }
+            };
+            reader.readAsText(srtFile);
+        };
+        input.click();
+    }, [addToast]);
+
     return (
         <DropZone onFileDrop={handleFileDrop} disabled={status === 'processing'}>
             <div className="app-container">
@@ -517,6 +599,16 @@ const App = () => {
                     </div>
                     <div className="header-right">
                         {status === 'completed' && <span className="status-badge">✅ 분석 완료</span>}
+                        <button
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px' }}
+                            onClick={() => setShowStats(prev => !prev)}
+                            title="자막 통계"
+                        >📊</button>
+                        <button
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px' }}
+                            onClick={() => setShowSearch(prev => !prev)}
+                            title="검색 (Ctrl+F)"
+                        >🔍</button>
                         <ThemeToggle />
                     </div>
                     <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="video/*,audio/*" />
@@ -553,6 +645,7 @@ const App = () => {
                     targetLang={targetLang}
                     setTargetLang={setTargetLang}
                     hasTranslation={!!translatedCaptions}
+                    onImportSRT={handleImportSRT}
                 />
 
                 <main className="main-layout">
@@ -612,6 +705,23 @@ const App = () => {
                         onClose={() => setShowTemplateGallery(false)}
                         onApplyTemplate={applyTemplate}
                     />
+
+                    <SubtitleSearch
+                        isVisible={showSearch}
+                        onClose={() => setShowSearch(false)}
+                        captions={captions}
+                        onUpdateCaption={updateCaption}
+                        onSeek={seekTo}
+                        syncOffset={syncOffset}
+                    />
+
+                    <SubtitleStats
+                        captions={captions}
+                        duration={duration}
+                        isVisible={showStats}
+                        syncOffset={syncOffset}
+                        onClose={() => setShowStats(false)}
+                    />
                 </main>
 
                 <Timeline
@@ -619,6 +729,7 @@ const App = () => {
                     duration={duration}
                     zoomLevel={zoomLevel}
                     setZoomLevel={setZoomLevel}
+                    videoRef={videoRef}
                     captions={captions}
                     waveform={waveform}
                     togglePlay={togglePlay}

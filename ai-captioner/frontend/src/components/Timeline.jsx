@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import PlaybackSpeed from './PlaybackSpeed';
 
 /**
  * 타임라인 컴포넌트
@@ -7,7 +8,7 @@ import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react'
  * - 타임라인 ruler
  * - 스마트 스크롤: 재생 중 자동 추적, 일시정지 시 수동 스크롤
  */
-const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, waveform, togglePlay, formatTime, onSeek, syncOffset = 0, isPlaying }) => {
+const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, waveform, togglePlay, formatTime, onSeek, syncOffset = 0, isPlaying, videoRef }) => {
     const waveformCanvasRef = useRef(null);
     const playheadCanvasRef = useRef(null);
     const rulerCanvasRef = useRef(null);
@@ -159,6 +160,7 @@ const Timeline = ({ currentTime, duration, zoomLevel, setZoomLevel, captions, wa
                     <span className="current-time">{formatTime(currentTime)}</span>
                     <span className="duration-separator">/</span>
                     <span className="total-duration">{formatTime(duration)}</span>
+                    <PlaybackSpeed videoRef={videoRef} />
                 </div>
                 <div className="zoom-control">
                     <span>🔍</span>
