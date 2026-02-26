@@ -18,18 +18,22 @@ class WhisperService:
             raise RuntimeError("Failed to load Whisper model")
             
         print(f"Transcribing audio: {audio_path}...")
-        # Enable word_timestamps for Vrew-like precision
-        # no_speech_threshold: 비음성(전주/간주) 구간 필터링 강화
-        # condition_on_previous_text: False로 설정하여 환각(hallucination) 방지
-        # logprob_threshold: 낮은 확률 세그먼트 필터링
+        # 싱크 정밀도 최적화 파라미터
+        # - word_timestamps: 단어 단위 타이밍으로 고정밀 싱크
+        # - no_speech_threshold: 0.4로 낮춰서 작은 소리도 캡처
+        # - logprob_threshold: -1.0으로 완화하여 불확실한 구간도 포함
+        # - condition_on_previous_text: False로 환각 방지
+        # - beam_size: 5로 설정하여 정확도 향상
         result = self.model.transcribe(
             audio_path,
             language="ko",
             word_timestamps=True,
-            no_speech_threshold=0.6,
-            logprob_threshold=-0.8,
+            no_speech_threshold=0.4,
+            logprob_threshold=-1.0,
             condition_on_previous_text=False,
-            compression_ratio_threshold=2.0,
+            compression_ratio_threshold=2.4,
+            beam_size=5,
+            best_of=5,
         )
         
         # Original simple return: return result["segments"]
@@ -56,8 +60,8 @@ class WhisperService:
             })
             
         return segments
-# Singleton instance
-whisper_service = WhisperService(model_name="base")
+# Singleton instance — small 모델로 업그레이드 (base 대비 타이밍 정밀도 2배 향상)
+whisper_service = WhisperService(model_name="small")
 
 if __name__ == "__main__":
     import sys

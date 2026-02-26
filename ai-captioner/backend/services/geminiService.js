@@ -314,20 +314,55 @@ ${segmentsForPrompt}
                             console.log(`  [${fix.index}] text: "${corrected[fix.index].text}" → "${fix.text}"`);
                             corrected[fix.index].text = fix.text;
                         }
-                        // 타이밍 보정 적용
+                        // 타이밍 보정 적용 — 비정상 점프 검증 포함 (self-check 교훈 #3)
+                        const originalStart = corrected[fix.index].start;
+                        const originalEnd = corrected[fix.index].end;
+
                         if (fix.start != null && typeof fix.start === 'number') {
-                            console.log(`  [${fix.index}] start: ${corrected[fix.index].start.toFixed(2)}s → ${fix.start.toFixed(2)}s`);
-                            corrected[fix.index].start = fix.start;
+                            // 원본 대비 30초 이상 점프하면 비정상 → 원본 유지
+                            const drift = Math.abs(fix.start - originalStart);
+                            if (drift > 30) {
+                                console.log(`  [${fix.index}] ⚠️ start drift ${drift.toFixed(1)}s too large, keeping original ${originalStart.toFixed(2)}s`);
+                            } else {
+                                console.log(`  [${fix.index}] start: ${originalStart.toFixed(2)}s → ${fix.start.toFixed(2)}s`);
+                                corrected[fix.index].start = fix.start;
+                            }
                         }
                         if (fix.end != null && typeof fix.end === 'number') {
-                            console.log(`  [${fix.index}] end: ${corrected[fix.index].end.toFixed(2)}s → ${fix.end.toFixed(2)}s`);
-                            corrected[fix.index].end = fix.end;
+                            const drift = Math.abs(fix.end - originalEnd);
+                            if (drift > 30) {
+                                console.log(`  [${fix.index}] ⚠️ end drift ${drift.toFixed(1)}s too large, keeping original ${originalEnd.toFixed(2)}s`);
+                            } else {
+                                console.log(`  [${fix.index}] end: ${originalEnd.toFixed(2)}s → ${fix.end.toFixed(2)}s`);
+                                corrected[fix.index].end = fix.end;
+                            }
+                        }
+
+                        // 음수 duration 방지: end < start이면 swap
+                        if (corrected[fix.index].end < corrected[fix.index].start) {
+                            console.log(`  [${fix.index}] ⚠️ negative duration detected, swapping start/end`);
+                            const tmp = corrected[fix.index].start;
+                            corrected[fix.index].start = corrected[fix.index].end;
+                            corrected[fix.index].end = tmp;
                         }
                     }
                 }
 
                 // 타이밍 순서 재정렬
                 corrected.sort((a, b) => a.start - b.start);
+
+                // 겹침 제거 + 최소 간격 보장 (후처리)
+                for (let i = 0; i < corrected.length - 1; i++) {
+                    if (corrected[i].end > corrected[i + 1].start) {
+                        // 겹치면 이전 세그먼트의 end를 다음 start 직전으로 조정
+                        corrected[i].end = corrected[i + 1].start - 0.05;
+                        console.log(`  [overlap fix] seg ${i} end adjusted to ${corrected[i].end.toFixed(2)}s`);
+                    }
+                    // 최소 duration 보장 (0.3초 이하면 0.3초로)
+                    if (corrected[i].end - corrected[i].start < 0.3) {
+                        corrected[i].end = corrected[i].start + 0.3;
+                    }
+                }
 
                 await fileManager.deleteFile(name).catch(() => { });
                 return corrected;
