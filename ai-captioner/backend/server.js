@@ -221,17 +221,20 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
             generateWaveform(audioPath, 20).catch(err => [])
         ]);
 
-        // === Gemini 직접 전사를 메인 엔진으로 사용 (Whisper는 fallback) ===
-        // Gemini가 오디오를 직접 듣고 2~5초 세그먼트 + 정확한 타이밍을 생성
-        if (geminiData.segments && geminiData.segments.length > 0) {
-            logger.info(`[Job ${jobId}] ✅ Using GEMINI direct transcription (${geminiData.segments.length} segs)`);
-            job.segments = geminiData.segments;
-            job.segments.slice(0, 10).forEach((s, i) => {
-                logger.info(`  [G${i}] ${(s.start || 0).toFixed(2)}-${(s.end || 0).toFixed(2)}s "${(s.text || '').substring(0, 30)}"`);
+        // === 하이브리드: Whisper(타이밍) + Gemini(텍스트만) ===
+        // Whisper: 정확한 오디오 타이밍. Gemini: 한국어 텍스트 교정(타이밍 변경 금지)
+        if (whisperSegments.length > 0) {
+            logger.info(`[Job ${jobId}] ✅ Whisper ${whisperSegments.length} segs → Gemini 텍스트 교정`);
+            job.progress = { stage: 'correcting', updatedAt: Date.now() };
+
+            // Gemini로 텍스트만 교정 (타이밍은 Whisper 원본 유지)
+            job.segments = await correctTextWithGemini(audioPath, whisperSegments, targetLanguage).catch(err => {
+                logger.error("Gemini Text Correction Failed, using raw Whisper", err);
+                return whisperSegments;
             });
-        } else if (whisperSegments.length > 0) {
-            logger.warn(`[Job ${jobId}] ⚠️ Gemini 0 segs. Falling back to Whisper (${whisperSegments.length} segs)`);
-            job.segments = whisperSegments;
+        } else if (geminiData.segments && geminiData.segments.length > 0) {
+            logger.warn(`[Job ${jobId}] ⚠️ Whisper 0 segs. Falling back to Gemini direct.`);
+            job.segments = geminiData.segments;
         } else {
             logger.warn(`[Job ${jobId}] Whisper returned 0 segments. Fallback to Gemini.`);
             job.segments = geminiData.segments;

@@ -241,35 +241,24 @@ async function correctTextWithGemini(audioPath, whisperSegments, targetLanguage 
         const prompt = `
 역할: 당신은 대한민국 최고의 영상 자막 교정 전문가이자 음성/음악 분석 전문가입니다.
 
-아래는 AI(Whisper)가 자동 생성한 자막 리스트입니다. **오디오 파일을 직접 청취**하여 실제 발화/가사와 비교 분석하고, 텍스트와 타이밍을 모두 정밀 보정하세요.
+아래는 AI(Whisper)가 자동 생성한 자막 리스트입니다. **오디오 파일을 직접 청취**하여 실제 발화/가사와 비교하고, **텍스트만** 교정하세요. 타이밍(start/end)은 변경하지 마세요.
 
 [자동 생성 자막 리스트]
 ${segmentsForPrompt}
 
-[핵심 교정 원칙]
-
-**A. 타이밍 보정 (가장 중요!)**
-1. **전주/간주 감지**: 음악의 전주(인트로), 간주(인터루드), 아웃트로 등 보컬이 없는 구간에 자막이 배치되어 있으면, 실제 보컬이 시작되는 정확한 시점으로 타이밍을 이동하세요.
-2. **보컬 시작점 정밀 매칭**: 오디오를 듣고 각 가사/발화가 실제로 시작하는 정확한 초(second)를 판단하세요.
-3. **오디오 에너지 분석**: 음성의 에너지(볼륨) 변화를 감지하여, 실제 음성이 시작/종료되는 지점을 정확히 파악하세요.
-4. **음소 경계 탐지**: 발화의 첫 음소(첫 자음/모음)가 시작되는 정확한 시간을 start로 사용하세요.
-5. **겹침 방지**: 보정 후에도 세그먼트 간 시간이 겹치지 않도록 하세요.
-6. **순서 유지**: 세그먼트의 시간 순서는 반드시 유지하세요.
-7. **시작 오프셋 보정**: 첫 번째 세그먼트의 start가 실제 첫 음성보다 앞서 있으면, 실제 음성 시작점으로 조정하세요.
-
-**B. 텍스트 교정**
+[교정 원칙 — 텍스트만]
 1. 문맥 기반 오류 수정 (동음이의어, 오인식 단어)
 2. 한국어 표준어 맞춤법 적용
 3. 가독성 향상 (의미 유지)
 4. 같은 단어가 반복되면 일관된 표기 사용
+5. 들리지 않는 부분은 추측하지 말고 원본 유지
 
 [출력 가이드]
 - 오직 JSON 배열 포맷으로만 응답하세요.
-- 형식: [ { "index": n, "text": "교정 내용", "start": 시작초, "end": 종료초 }, ... ]
-- text: 교정된 텍스트 (변경 없으면 원본 그대로)
-- start/end: 보정된 타이밍 (초 단위, 소수점 2자리). 타이밍 변경 불필요 시 원본 값 그대로 포함
-- **모든 세그먼트를 포함하세요** (교정 여부와 관계없이 전체 배열 반환)
-- 전주/간주에 걸린 자막을 올바른 시점으로 이동하는 것이 최우선입니다.
+- 형식: [ { "index": n, "text": "교정된 텍스트" }, ... ]
+- **텍스트가 변경된 세그먼트만 포함**하세요 (변경 없으면 포함하지 않음)
+- start/end 필드를 포함하지 마세요 (타이밍은 변경하지 않습니다)
+- 교정할 것이 없으면 빈 배열 [] 반환
 `;
 
         let lastError = null;
@@ -306,59 +295,13 @@ ${segmentsForPrompt}
                 const corrections = JSON.parse(text.substring(arrStart, arrEnd + 1));
                 console.log(`[AI-Correct] ${corrections.length} corrections from ${modelName}`);
 
-                // Apply corrections (text + timing) to Whisper segments
+                // Apply corrections — 텍스트만 교정, 타이밍은 Whisper 원본 100% 유지
                 const corrected = [...whisperSegments];
                 for (const fix of corrections) {
-                    if (fix.index >= 0 && fix.index < corrected.length) {
-                        if (fix.text) {
-                            console.log(`  [${fix.index}] text: "${corrected[fix.index].text}" → "${fix.text}"`);
-                            corrected[fix.index].text = fix.text;
-                        }
-                        // 타이밍 보정 적용 — 비정상 점프 검증 포함 (self-check 교훈 #3)
-                        const originalStart = corrected[fix.index].start;
-                        const originalEnd = corrected[fix.index].end;
-
-                        if (fix.start != null && typeof fix.start === 'number') {
-                            // 원본 대비 30초 이상 점프하면 비정상 → 원본 유지
-                            const drift = Math.abs(fix.start - originalStart);
-                            if (drift > 30) {
-                                console.log(`  [${fix.index}] ⚠️ start drift ${drift.toFixed(1)}s too large, keeping original ${originalStart.toFixed(2)}s`);
-                            } else {
-                                console.log(`  [${fix.index}] start: ${originalStart.toFixed(2)}s → ${fix.start.toFixed(2)}s`);
-                                corrected[fix.index].start = fix.start;
-                            }
-                        }
-                        if (fix.end != null && typeof fix.end === 'number') {
-                            const drift = Math.abs(fix.end - originalEnd);
-                            if (drift > 30) {
-                                console.log(`  [${fix.index}] ⚠️ end drift ${drift.toFixed(1)}s too large, keeping original ${originalEnd.toFixed(2)}s`);
-                            } else {
-                                console.log(`  [${fix.index}] end: ${originalEnd.toFixed(2)}s → ${fix.end.toFixed(2)}s`);
-                                corrected[fix.index].end = fix.end;
-                            }
-                        }
-
-                        // 음수 duration 방지: end < start이면 swap
-                        if (corrected[fix.index].end < corrected[fix.index].start) {
-                            console.log(`  [${fix.index}] ⚠️ negative duration detected, swapping start/end`);
-                            const tmp = corrected[fix.index].start;
-                            corrected[fix.index].start = corrected[fix.index].end;
-                            corrected[fix.index].end = tmp;
-                        }
-                    }
-                }
-
-                // 타이밍 순서 재정렬
-                corrected.sort((a, b) => a.start - b.start);
-
-                // 겹침 제거 + 최소 간격 보장 (후처리)
-                for (let i = 0; i < corrected.length - 1; i++) {
-                    if (corrected[i].end > corrected[i + 1].start) {
-                        corrected[i].end = corrected[i + 1].start - 0.05;
-                        console.log(`  [overlap fix] seg ${i} end adjusted to ${corrected[i].end.toFixed(2)}s`);
-                    }
-                    if (corrected[i].end - corrected[i].start < 0.3) {
-                        corrected[i].end = corrected[i].start + 0.3;
+                    if (fix.index >= 0 && fix.index < corrected.length && fix.text) {
+                        console.log(`  [${fix.index}] text: "${corrected[fix.index].text}" → "${fix.text}"`);
+                        corrected[fix.index].text = fix.text;
+                        // ⚠️ 타이밍(start/end)은 절대 건드리지 않음 — Whisper 원본 유지
                     }
                 }
 
