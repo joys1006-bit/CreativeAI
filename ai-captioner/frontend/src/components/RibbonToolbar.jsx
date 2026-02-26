@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// Phase 2: Speaker Diarization v2 - 2026-02-26T21:00 (force refresh)
 
 /**
  * [CPO 담당] 리본 툴바 — Vrew 수준 프리미엄 디자인
@@ -18,6 +19,7 @@ const RibbonToolbar = ({
     onToggleTts, onToggleTemplate,
     onTranslate, targetLang, setTargetLang, hasTranslation,
     onImportSRT,
+    onIdentifySpeakers, hasSpeakers,
 }) => {
     const isProcessing = status === 'processing' || status === 'uploading';
     const [hoveredBtn, setHoveredBtn] = useState(null);
@@ -75,13 +77,15 @@ const RibbonToolbar = ({
             padding: '12px 20px',
             minHeight: '72px',
             background: '#1e1e38',
+            overflowX: 'auto',
+            gap: '0px',
         },
         group: {
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
             gap: '4px',
-            width: '100%',
+            minWidth: 'max-content',
         },
         divider: {
             width: '1px',
@@ -95,6 +99,7 @@ const RibbonToolbar = ({
             flexDirection: 'column',
             alignItems: 'flex-start',
             gap: '6px',
+            flexShrink: 0,
         },
         sectionLabel: {
             fontSize: '10.5px',
@@ -256,6 +261,17 @@ const RibbonToolbar = ({
                                 >
                                     <span style={S.icon}>{showInsight ? '📊' : '📈'}</span><span>AI 분석</span>
                                 </button>
+                                <button
+                                    style={{ ...S.btn('speaker-home'), ...(!hasCaptions ? S.disabledOverlay : {}) }}
+                                    onClick={onIdentifySpeakers}
+                                    disabled={!hasCaptions}
+                                    {...hoverProps('speaker-home')}
+                                >
+                                    <span style={S.icon}>🎤</span><span>화자 분리</span>
+                                </button>
+                                {hasSpeakers && (
+                                    <span style={{ fontSize: '16px', filter: 'drop-shadow(0 0 4px #8b5cf6)' }}>✅</span>
+                                )}
                             </div>
                         </div>
                         <div style={S.divider} />
@@ -375,6 +391,23 @@ const RibbonToolbar = ({
                                 </button>
                                 {hasTranslation && (
                                     <span style={{ marginLeft: '6px', fontSize: '16px', filter: 'drop-shadow(0 0 4px #10b981)' }}>✅</span>
+                                )}
+                            </div>
+                        </div>
+                        <div style={S.divider} />
+                        <div style={S.section}>
+                            <span style={S.sectionLabel}>화자 분리</span>
+                            <div style={S.buttonRow}>
+                                <button
+                                    style={{ ...S.btnPrimary('speaker'), ...(!hasCaptions ? S.disabledOverlay : {}) }}
+                                    onClick={onIdentifySpeakers}
+                                    disabled={!hasCaptions}
+                                    {...hoverProps('speaker')}
+                                >
+                                    <span style={S.icon}>🎤</span><span>화자 분리</span>
+                                </button>
+                                {hasSpeakers && (
+                                    <span style={{ marginLeft: '6px', fontSize: '16px', filter: 'drop-shadow(0 0 4px #8b5cf6)' }}>✅</span>
                                 )}
                             </div>
                         </div>

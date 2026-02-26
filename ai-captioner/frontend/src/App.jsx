@@ -21,6 +21,12 @@ import SubtitleSearch from './components/SubtitleSearch';
 import SubtitleStats from './components/SubtitleStats';
 import VideoExporter from './components/VideoExporter';
 import { ThemeToggle } from './components/ThemeProvider';
+import { SpeakerLegend } from './components/SpeakerBadge';
+
+// 커스텀 훅
+import useVideoPlayer from './hooks/useVideoPlayer';
+import useSubtitles from './hooks/useSubtitles';
+import useSession from './hooks/useSession';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -36,21 +42,24 @@ const DEFAULT_SUBTITLE_STYLE = {
 };
 
 const App = () => {
+    // --- 커스텀 훅: 비디오 재생 ---
+    const {
+        currentTime, duration, isPlaying, zoomLevel, setZoomLevel,
+        videoRef, togglePlay, seekTo,
+        handlePlay, handlePause, handleEnded,
+        handleTimeUpdate, handleLoadedMetadata, formatTime,
+    } = useVideoPlayer();
+
     // --- State: 데이터 ---
     const [file, setFile] = useState(null);
     const [status, setStatus] = useState('idle');
-    const [captions, setCaptions] = useState([]);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [aiAnalysis, setAiAnalysis] = useState(null);
     const [waveform, setWaveform] = useState([]);
     const [jobId, setJobId] = useState(null);
     const [progress, setProgress] = useState({ stage: 'uploading' });
 
-    // --- State: UI/재생 ---
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [zoomLevel, setZoomLevel] = useState(100);
+    // --- State: 싱크 & UI ---
     const [activeTab, setActiveTab] = useState('home');
     const [syncOffset, setSyncOffset] = useState(0.0);
     const [showInsight, setShowInsight] = useState(false);
@@ -61,6 +70,9 @@ const App = () => {
 
     // --- State: 무음 구간 ---
     const [silenceSegments, setSilenceSegments] = useState([]);
+
+    // --- State: 화자 분리 (Phase 2) ---
+    const [speakers, setSpeakers] = useState([]);
 
     // --- State: TTS ---
     const [showTtsPanel, setShowTtsPanel] = useState(false);
@@ -80,7 +92,7 @@ const App = () => {
     const [overlayImage, setOverlayImage] = useState(null);
 
     // --- State: 자막 위치 (드래그) ---
-    const [subtitlePos, setSubtitlePos] = useState(null); // { x: %, y: % }
+    const [subtitlePos, setSubtitlePos] = useState(null);
 
     // --- State: Phase 1 새 기능 ---
     const [showSearch, setShowSearch] = useState(false);
@@ -90,112 +102,8 @@ const App = () => {
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
 
-    // --- State: Undo/Redo ---
-    const [captionHistory, setCaptionHistory] = useState([]);
-    const [historyIndex, setHistoryIndex] = useState(-1);
-
     // --- Refs ---
     const fileInputRef = useRef(null);
-    const videoRef = useRef(null);
-    const historyDebounceRef = useRef(null);
-    const saveTimerRef = useRef(null);
-
-    // === IndexedDB 헬퍼 (비디오 파일 저장용) ===
-    const openDB = useCallback(() => {
-        return new Promise((resolve, reject) => {
-            const req = indexedDB.open('AICaptionerSession', 1);
-            req.onupgradeneeded = () => {
-                const db = req.result;
-                if (!db.objectStoreNames.contains('files')) {
-                    db.createObjectStore('files');
-                }
-            };
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => reject(req.error);
-        });
-    }, []);
-
-    const saveFileToDB = useCallback(async (key, file) => {
-        try {
-            const db = await openDB();
-            const tx = db.transaction('files', 'readwrite');
-            tx.objectStore('files').put(file, key);
-        } catch (e) { console.warn('IndexedDB 저장 실패:', e); }
-    }, [openDB]);
-
-    const getFileFromDB = useCallback(async (key) => {
-        try {
-            const db = await openDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction('files', 'readonly');
-                const req = tx.objectStore('files').get(key);
-                req.onsuccess = () => resolve(req.result || null);
-                req.onerror = () => resolve(null);
-            });
-        } catch (e) { return null; }
-    }, [openDB]);
-
-    // === 자동 저장 (5초 디바운스) ===
-    useEffect(() => {
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-            try {
-                const sessionData = {
-                    captions,
-                    syncOffset,
-                    subtitleStyle,
-                    subtitlePos,
-                    overlayImage,
-                    status,
-                    fileName: file?.name || null,
-                    savedAt: Date.now(),
-                };
-                localStorage.setItem('ai-captioner-session', JSON.stringify(sessionData));
-            } catch (e) { console.warn('세션 저장 실패:', e); }
-        }, 3000);
-        return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-    }, [captions, syncOffset, subtitleStyle, subtitlePos, overlayImage, status, file]);
-
-    // 비디오 파일 변경 시 IndexedDB에 저장
-    useEffect(() => {
-        if (file) saveFileToDB('currentVideo', file);
-    }, [file, saveFileToDB]);
-
-    // === 세션 복원 (앱 시작 시 1회) ===
-    useEffect(() => {
-        const restore = async () => {
-            try {
-                const raw = localStorage.getItem('ai-captioner-session');
-                if (!raw) return;
-
-                const session = JSON.parse(raw);
-                // 24시간 이내 세션만 복원
-                if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
-                    localStorage.removeItem('ai-captioner-session');
-                    return;
-                }
-
-                // 자막 & 설정 복원
-                if (session.captions?.length > 0) setCaptions(session.captions);
-                if (session.syncOffset != null) setSyncOffset(session.syncOffset);
-                if (session.subtitleStyle) setSubtitleStyle(session.subtitleStyle);
-                if (session.subtitlePos) setSubtitlePos(session.subtitlePos);
-                if (session.overlayImage) setOverlayImage(session.overlayImage);
-                if (session.status && session.status !== 'idle') setStatus(session.status);
-
-                // 비디오 파일 복원
-                const savedFile = await getFileFromDB('currentVideo');
-                if (savedFile && session.fileName) {
-                    const restoredFile = new File([savedFile], session.fileName, { type: savedFile.type });
-                    setFile(restoredFile);
-                    setPreviewUrl(URL.createObjectURL(restoredFile));
-                    console.log(`✅ 세션 복원: "${session.fileName}", 자막 ${session.captions?.length || 0}개`);
-                }
-            } catch (e) { console.warn('세션 복원 실패:', e); }
-        };
-        restore();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     // === Toast 헬퍼 ===
     const addToast = useCallback((message, type = 'info') => {
@@ -210,75 +118,28 @@ const App = () => {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
-    // === Undo/Redo 헬퍼 ===
-    const historyRef = useRef({ captionHistory: [], historyIndex: -1 });
+    // --- 커스텀 훅: 자막 관리 ---
+    const {
+        captions, setCaptions,
+        captionHistory, historyIndex,
+        handleUndo, handleRedo, initializeHistory,
+        updateCaption, updateCaptionTiming,
+        deleteCaption, addCaption: addCaptionBase,
+        mergeCaptions: mergeCaptionsBase,
+        splitCaption: splitCaptionBase,
+    } = useSubtitles(addToast);
 
-    useEffect(() => {
-        historyRef.current = { captionHistory, historyIndex };
-    }, [captionHistory, historyIndex]);
+    // App 레벨에서 currentTime/syncOffset 바인딩
+    const handleAddCaption = useCallback(() => addCaptionBase(currentTime, duration), [addCaptionBase, currentTime, duration]);
+    const handleMergeCaptions = useCallback(() => mergeCaptionsBase(currentTime, syncOffset), [mergeCaptionsBase, currentTime, syncOffset]);
+    const handleSplitCaption = useCallback(() => splitCaptionBase(currentTime, syncOffset), [splitCaptionBase, currentTime, syncOffset]);
 
-    const pushHistory = useCallback((newCaptions) => {
-        if (historyDebounceRef.current) clearTimeout(historyDebounceRef.current);
-        historyDebounceRef.current = setTimeout(() => {
-            const { captionHistory: hist, historyIndex: idx } = historyRef.current;
-            const sliced = hist.slice(0, idx + 1);
-            const newHistory = [...sliced, JSON.parse(JSON.stringify(newCaptions))];
-            setCaptionHistory(newHistory);
-            setHistoryIndex(newHistory.length - 1);
-        }, 500);
-    }, []);
-
-    const handleUndo = useCallback(() => {
-        if (historyRef.current.historyIndex > 0) {
-            const prevIndex = historyRef.current.historyIndex - 1;
-            setHistoryIndex(prevIndex);
-            setCaptions(JSON.parse(JSON.stringify(historyRef.current.captionHistory[prevIndex])));
-            addToast('되돌리기 완료', 'info');
-        }
-    }, [addToast]);
-
-    const handleRedo = useCallback(() => {
-        const { captionHistory: hist, historyIndex: idx } = historyRef.current;
-        if (idx < hist.length - 1) {
-            const nextIndex = idx + 1;
-            setHistoryIndex(nextIndex);
-            setCaptions(JSON.parse(JSON.stringify(hist[nextIndex])));
-            addToast('다시하기 완료', 'info');
-        }
-    }, [addToast]);
-
-    // === 재생 로직 ===
-    const togglePlay = useCallback(() => {
-        if (!videoRef.current) return;
-        if (videoRef.current.paused) videoRef.current.play();
-        else videoRef.current.pause();
-    }, []);
-
-    const seekTo = useCallback((time) => {
-        if (videoRef.current) {
-            videoRef.current.currentTime = time;
-            setCurrentTime(time);
-        }
-    }, []);
-
-    const handlePlay = useCallback(() => setIsPlaying(true), []);
-    const handlePause = useCallback(() => setIsPlaying(false), []);
-    const handleEnded = useCallback(() => setIsPlaying(false), []);
-    const handleTimeUpdate = () => setCurrentTime(videoRef.current?.currentTime || 0);
-    const handleLoadedMetadata = () => setDuration(videoRef.current?.duration || 0);
-
-    // 고빈도 업데이트 루프
-    useEffect(() => {
-        let animationFrameId;
-        const loop = () => {
-            if (videoRef.current && !videoRef.current.paused) {
-                setCurrentTime(videoRef.current.currentTime);
-            }
-            animationFrameId = requestAnimationFrame(loop);
-        };
-        loop();
-        return () => cancelAnimationFrame(animationFrameId);
-    }, []);
+    // --- 커스텀 훅: 세션 관리 ---
+    useSession({
+        captions, syncOffset, subtitleStyle, subtitlePos, overlayImage, status, file,
+        setCaptions, setSyncOffset, setSubtitleStyle, setSubtitlePos,
+        setOverlayImage, setStatus, setFile, setPreviewUrl,
+    });
 
     // === SRT 내보내기 ===
     const handleExportSRT = useCallback(() => {
@@ -371,7 +232,7 @@ const App = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [togglePlay, seekTo, duration, handleUndo, handleRedo, handleExportSRT]);
+    }, [togglePlay, seekTo, duration, handleUndo, handleRedo, handleExportSRT, videoRef]);
 
     // === 파일 처리 ===
     const handleFileChange = (e) => {
@@ -386,8 +247,6 @@ const App = () => {
             setStatus('idle');
             setShowInsight(false);
             setSilenceSegments([]);
-            setCaptionHistory([]);
-            setHistoryIndex(-1);
             setOverlayImage(null);
             addToast(`"${selectedFile.name}" 로드 완료`, 'success');
         }
@@ -430,10 +289,10 @@ const App = () => {
                     if (res.data.status === 'COMPLETED') {
                         const videoDuration = videoRef.current?.duration || duration || Infinity;
                         const segments = (res.data.segments || [])
-                            .filter(seg => seg.start < videoDuration) // 영상 길이 초과 자막 제거
+                            .filter(seg => seg.start < videoDuration)
                             .map((seg, i) => ({
                                 ...seg,
-                                end: Math.min(seg.end, videoDuration), // end 클램프
+                                end: Math.min(seg.end, videoDuration),
                                 id: seg.id || `seg_${i}_${Date.now()}`
                             }));
                         setCaptions(segments);
@@ -446,8 +305,7 @@ const App = () => {
                         });
                         setWaveform(res.data.waveform || []);
                         setStatus('completed');
-                        setCaptionHistory([JSON.parse(JSON.stringify(segments))]);
-                        setHistoryIndex(0);
+                        initializeHistory(segments);
                         clearInterval(timer);
                         addToast(`✨ 자막 ${segments.length}개 생성 완료!`, 'success');
                     } else if (res.data.status === 'FAILED') {
@@ -459,7 +317,7 @@ const App = () => {
             }, 2000);
         }
         return () => clearInterval(timer);
-    }, [status, jobId, addToast]);
+    }, [status, jobId, addToast, duration, videoRef, setCaptions, initializeHistory]);
 
     // === 내보내기 ===
     const handleExportVideo = async () => {
@@ -476,74 +334,20 @@ const App = () => {
             setStatus('completed');
         }
     };
-
-    // === 자막 CRUD ===
-    const updateCaption = useCallback((id, newText) => {
-        setCaptions(prev => prev.map((c, idx) => (c.id === id || idx === id) ? { ...c, text: newText } : c));
-        setCaptions(current => { pushHistory(current); return current; });
-    }, [pushHistory]);
-
-    const updateCaptionTiming = useCallback((index, newStart, newEnd) => {
-        setCaptions(prev => prev.map((c, i) => i === index ? { ...c, start: Math.round(newStart * 100) / 100, end: Math.round(newEnd * 100) / 100 } : c));
-    }, []);
-
-    const deleteCaption = useCallback((index) => {
-        setCaptions(prev => prev.filter((_, i) => i !== index));
-        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
-        addToast('자막이 삭제되었습니다', 'info');
-    }, [pushHistory, addToast]);
-
-    const addCaption = useCallback(() => {
-        const newStart = currentTime;
-        const newEnd = Math.min(currentTime + 3, duration || currentTime + 3);
-        const newSegment = { id: `seg_new_${Date.now()}`, start: newStart, end: newEnd, text: '새 자막', confidence: 1.0 };
-        setCaptions(prev => [...prev, newSegment].sort((a, b) => a.start - b.start));
-        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
-        addToast('새 자막이 추가되었습니다', 'success');
-    }, [currentTime, duration, pushHistory, addToast]);
-
-    const mergeCaptions = useCallback(() => {
-        if (captions.length < 2) return addToast('합칠 자막이 부족합니다', 'warning');
-        const currentIdx = captions.findIndex(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
-        if (currentIdx === -1 || currentIdx >= captions.length - 1) {
-            return addToast('합칠 위치를 찾을 수 없습니다. 재생 바를 자막 위에 놓아주세요.', 'warning');
+    // === 화자 분리 (Phase 2) ===
+    const identifySpeakersHandler = useCallback(async () => {
+        if (!jobId) return addToast('먼저 영상을 분석해주세요', 'warning');
+        if (captions.length === 0) return addToast('자막이 없습니다', 'warning');
+        addToast('🎤 화자를 분리하고 있습니다...', 'info');
+        try {
+            const res = await axios.post(`${API_BASE}/speaker-identify`, { jobId });
+            setCaptions(res.data.segments);
+            setSpeakers(res.data.speakers || []);
+            addToast(`✅ ${res.data.speakers?.length || 1}명의 화자가 식별되었습니다!`, 'success');
+        } catch (e) {
+            addToast('화자 분리 실패: ' + (e.response?.data?.error || e.message), 'error');
         }
-        const current = captions[currentIdx];
-        const next = captions[currentIdx + 1];
-        const merged = { ...current, end: next.end, text: current.text + ' ' + next.text };
-        setCaptions(prev => { const u = [...prev]; u[currentIdx] = merged; u.splice(currentIdx + 1, 1); return u; });
-        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
-        addToast('자막 2개가 합쳐졌습니다', 'success');
-    }, [captions, currentTime, syncOffset, pushHistory, addToast]);
-
-    // === 자막 분할 ===
-    const splitCaption = useCallback(() => {
-        const currentIdx = captions.findIndex(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
-        if (currentIdx === -1) return addToast('분할할 자막을 찾을 수 없습니다. 재생 바를 자막 위에 놓아주세요.', 'warning');
-
-        const cap = captions[currentIdx];
-        const splitTime = currentTime - syncOffset;
-        if (splitTime <= cap.start + 0.1 || splitTime >= cap.end - 0.1) {
-            return addToast('분할 지점이 자막의 시작/끝에 너무 가깝습니다.', 'warning');
-        }
-
-        // 텍스트 중간 지점에서 분할
-        const text = cap.text;
-        const mid = Math.floor(text.length / 2);
-        const spaceIdx = text.indexOf(' ', mid);
-        const splitIdx = spaceIdx !== -1 ? spaceIdx : mid;
-
-        const first = { ...cap, end: splitTime, text: text.substring(0, splitIdx).trim(), id: `seg_split_a_${Date.now()}` };
-        const second = { ...cap, start: splitTime, text: text.substring(splitIdx).trim(), id: `seg_split_b_${Date.now()}` };
-
-        setCaptions(prev => {
-            const u = [...prev];
-            u.splice(currentIdx, 1, first, second);
-            return u;
-        });
-        setTimeout(() => { setCaptions(current => { pushHistory(current); return current; }); }, 0);
-        addToast('자막이 분할되었습니다', 'success');
-    }, [captions, currentTime, syncOffset, pushHistory, addToast]);
+    }, [jobId, captions, addToast, setCaptions]);
 
     // === 무음 구간 감지 ===
     const detectSilence = useCallback(async () => {
@@ -648,33 +452,6 @@ const App = () => {
     // === 현재 자막 ===
     const currentCaption = captions.find(c => currentTime >= c.start + syncOffset && currentTime <= c.end + syncOffset);
 
-    const formatTime = (s) => {
-        if (!s || isNaN(s)) return '00:00';
-        return new Date(s * 1000).toISOString().substr(14, 5);
-    };
-
-    // === 자동 저장 (localStorage) ===
-    useEffect(() => {
-        if (captions.length > 0 && file) {
-            const data = { captions, fileName: file.name, savedAt: Date.now() };
-            localStorage.setItem('ai-captioner-autosave', JSON.stringify(data));
-        }
-    }, [captions, file]);
-
-    // === 자동 복원 ===
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem('ai-captioner-autosave');
-            if (saved) {
-                const data = JSON.parse(saved);
-                if (data.captions?.length > 0 && Date.now() - data.savedAt < 24 * 60 * 60 * 1000) {
-                    // 나중에 파일 로드 시 자동 복원 가능하도록 보관
-                    console.log(`[AutoSave] 복원 가능: ${data.fileName}, ${data.captions.length}개 자막`);
-                }
-            }
-        } catch (e) { /* ignore */ }
-    }, []);
-
     // === SRT 파일 불러오기 ===
     const handleImportSRT = useCallback(() => {
         const input = document.createElement('input');
@@ -701,8 +478,7 @@ const App = () => {
                 });
                 if (segments.length > 0) {
                     setCaptions(segments);
-                    setCaptionHistory([JSON.parse(JSON.stringify(segments))]);
-                    setHistoryIndex(0);
+                    initializeHistory(segments);
                     setStatus('completed');
                     addToast(`📄 SRT 불러오기 성공! ${segments.length}개 자막`, 'success');
                 } else {
@@ -712,7 +488,7 @@ const App = () => {
             reader.readAsText(srtFile);
         };
         input.click();
-    }, [addToast]);
+    }, [addToast, setCaptions, initializeHistory]);
 
     return (
         <DropZone onFileDrop={handleFileDrop} disabled={status === 'processing'}>
@@ -762,9 +538,9 @@ const App = () => {
                     setSyncOffset={setSyncOffset}
                     hasFile={!!file}
                     hasCaptions={captions.length > 0}
-                    onAddCaption={addCaption}
-                    onMergeCaptions={mergeCaptions}
-                    onSplitCaption={splitCaption}
+                    onAddCaption={handleAddCaption}
+                    onMergeCaptions={handleMergeCaptions}
+                    onSplitCaption={handleSplitCaption}
                     onToggleInsight={() => setShowInsight(prev => !prev)}
                     showInsight={showInsight}
                     onUndo={handleUndo}
@@ -782,9 +558,12 @@ const App = () => {
                     setTargetLang={setTargetLang}
                     hasTranslation={!!translatedCaptions}
                     onImportSRT={handleImportSRT}
+                    onIdentifySpeakers={identifySpeakersHandler}
+                    hasSpeakers={speakers.length > 0}
                 />
 
                 <main className="main-layout">
+                    {speakers.length > 0 && <SpeakerLegend speakers={speakers} />}
                     <VideoStage
                         videoRef={videoRef}
                         previewUrl={previewUrl}
@@ -812,8 +591,8 @@ const App = () => {
                         onSeek={seekTo}
                         onUpdateCaption={updateCaption}
                         onDeleteCaption={deleteCaption}
-                        onMergeCaptions={mergeCaptions}
-                        onSplitCaption={splitCaption}
+                        onMergeCaptions={handleMergeCaptions}
+                        onSplitCaption={handleSplitCaption}
                         status={status}
                         isPlaying={isPlaying}
                     />

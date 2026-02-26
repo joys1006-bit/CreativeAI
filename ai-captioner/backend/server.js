@@ -1,3 +1,9 @@
+/**
+ * AI Captioner PRO 백엔드 서버
+ * 리팩토링: 라우트 모듈 분리 완료
+ * 담당: 백엔드 개발자 (L4)
+ * 설계: 백엔드 아키텍트 (L6)
+ */
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -9,36 +15,18 @@ const { extractAudio } = require('./services/audioService');
 const { transcribeWithGemini, correctTextWithGemini } = require('./services/geminiService');
 const { generateWaveform } = require('./services/waveformService');
 const { transcribeWithLocalWhisper } = require('./services/whisperLocalService');
-const { transcribeWithWhisper } = require('./services/whisper_service_wrapper'); // assuming we wrap the python call for clarity
+const { transcribeWithWhisper } = require('./services/whisper_service_wrapper');
+const { identifySpeakers } = require('./services/speakerService');
 const logger = require('./services/logger');
-const ffmpeg = require('fluent-ffmpeg');
-const { detectSilence, removeSilence } = require('./services/silenceDetector');
-const { getVoiceProfiles, getSpeechParams } = require('./services/ttsService');
-const { translateSegments, getSupportedLanguages } = require('./services/translationService');
 
-
-
-// ... (existing code)
-
-
-
-// 24h Automatic Job Cleanup Scheduler
-// ... (rest of file)
-// Resource Cleanup on Exit
-const cleanupAndExit = () => {
-    logger.info("[System] Shutting down. Cleaning up temporary resources...");
-    // Future: Add logic to kill orphan subprocesses if any
-    process.exit(0);
-};
-process.on('SIGINT', cleanupAndExit);
-process.on('SIGTERM', cleanupAndExit);
-
+// === 서버 설정 ===
 const app = express();
 const port = 8000;
 
 app.use(cors());
 app.use(express.json());
 
+// === 업로드 디렉토리 설정 ===
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR);
@@ -50,122 +38,11 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-const { createSRTFile } = require('./services/subtitleService');
-
-app.post('/export-video', async (req, res) => {
-    const { jobId, withSubtitles, format = 'mp4' } = req.body;
-    const job = jobs[jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-
-    const inputPath = path.join(UPLOAD_DIR, `${jobId}${path.extname(job.fileName)}`);
-    const outputPath = path.join(UPLOAD_DIR, `export_${jobId}_${Date.now()}.${format}`);
-
-    logger.audit('USER', 'VIDEO_EXPORT_START', { jobId, withSubtitles });
-
-    let command = ffmpeg(inputPath);
-
-    if (withSubtitles && job.segments.length > 0) {
-        try {
-            // STEP 1: Generate temporary SRT file for FFmpeg
-            const srtPath = createSRTFile(jobId, job.segments, UPLOAD_DIR);
-
-            // STEP 2: Apply Subtitles Filter (Hard-coding)
-            // Note: FFmpeg 'subtitles' filter requires escaped path for Windows
-            const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-            command = command.videoFilters(`subtitles='${escapedSrtPath}':force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3'`);
-
-            logger.info(`[Export] Subtitles enabled for Job ${jobId}. Using SRT: ${srtPath}`);
-        } catch (err) {
-            logger.error("[Export] Failed to prepare subtitles.", err);
-        }
-    }
-
-    command
-        .output(outputPath)
-        .on('start', (cmd) => logger.info(`[FFmpeg] Command: ${cmd}`))
-        .on('progress', (progress) => {
-            if (progress.percent) logger.info(`[Export ${jobId}] Progress: ${progress.percent.toFixed(1)}%`);
-        })
-        .on('end', () => {
-            logger.audit('SYSTEM', 'VIDEO_EXPORT_COMPLETE', { jobId, outputPath });
-            res.json({
-                downloadUrl: `http://localhost:${port}/uploads/${path.basename(outputPath)}`,
-                fileName: `export_${job.fileName}`
-            });
-        })
-        .on('error', (err) => {
-            logger.error(`[Export ${jobId}] Failed.`, err);
-            res.status(500).json({ error: "내보내기 중 오류가 발생했습니다: " + err.message });
-        })
-        .run();
-});
-
-app.post('/export-clip', (req, res) => {
-    const { jobId, start, end, logoName } = req.body;
-    const job = jobs[jobId];
-    if (!job) return res.status(404).send('Job not found');
-
-    const inputPath = path.join(UPLOAD_DIR, `${jobId}${path.extname(job.fileName)}`);
-    const outputPath = path.join(UPLOAD_DIR, `clip_${jobId}_${Date.now()}.mp4`);
-    const logoPath = logoName ? path.join(UPLOAD_DIR, logoName) : null;
-
-    logger.audit('USER', 'CLIP_EXPORT', { jobId, start, end, hasLogo: !!logoPath });
-
-    let command = ffmpeg(inputPath).setStartTime(start).setDuration(end - start);
-
-    if (logoPath && fs.existsSync(logoPath)) {
-        command = command.input(logoPath).complexFilter([{ filter: 'overlay', options: { x: 'main_w-overlay_w-10', y: '10' } }]);
-    }
-
-    command.output(outputPath)
-        .on('end', () => res.json({ clipUrl: `http://localhost:${port}/uploads/${path.basename(outputPath)}` }))
-        .on('error', (err) => {
-            logger.error("Clip creation failed.", err);
-            res.status(500).send("클립 생성 실패: " + err.message);
-        }).run();
-});
-
-app.post('/upload-logo', upload.single('logo'), (req, res) => {
-    if (!req.file) return res.status(400).send('No logo uploaded');
-    res.json({ logoName: req.file.filename });
-});
-
-app.get('/stats', (req, res) => {
-    try {
-        const jobEntries = Object.values(jobs || {});
-        const totalProjects = jobEntries.length;
-        const completedProjects = jobEntries.filter(j => j.status === 'COMPLETED').length;
-        const totalSegments = jobEntries.reduce((acc, j) => acc + (j.segments?.length || 0), 0);
-
-        let totalScore = 0;
-        let scoreCount = 0;
-        jobEntries.forEach(j => {
-            if (j.sentimentScore !== undefined) {
-                totalScore += j.sentimentScore;
-                scoreCount++;
-            }
-        });
-        const avgScore = scoreCount > 0 ? (totalScore / scoreCount).toFixed(2) : "0.50";
-
-        res.json({
-            totalProjects,
-            completedProjects,
-            totalSegments,
-            avgSentiment: avgScore,
-            uptime: process.uptime()
-        });
-    } catch (e) {
-        logger.error("Stats calculation failed", e);
-        res.status(500).json({ error: "통계 계산 중 오류가 발생했습니다." });
-    }
-});
-
-app.use('/uploads', express.static(UPLOAD_DIR));
-
+// === 작업(Job) 데이터 관리 ===
 const JOBS_FILE = path.join(__dirname, 'jobs.json');
 let jobs = {};
 
-// Load jobs from file on start
+// 서버 시작 시 jobs 파일 로드
 if (fs.existsSync(JOBS_FILE)) {
     try {
         jobs = JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8'));
@@ -184,8 +61,99 @@ function saveJobs() {
     }
 }
 
+// === 리소스 정리 ===
+const cleanupAndExit = () => {
+    logger.info("[System] Shutting down. Cleaning up temporary resources...");
+    process.exit(0);
+};
+process.on('SIGINT', cleanupAndExit);
+process.on('SIGTERM', cleanupAndExit);
+
+// === 정적 파일 서빙 ===
+app.use('/uploads', express.static(UPLOAD_DIR));
 app.get('/', (req, res) => res.send('CreativeAI Insight Backend - Operational 🚀'));
 
+// === 라우트 모듈 등록 ===
+const subtitleRoutes = require('./routes/subtitleRoutes')(jobs, saveJobs, logger);
+const exportRoutes = require('./routes/exportRoutes')(jobs, saveJobs, logger, upload, UPLOAD_DIR, port);
+const silenceRoutes = require('./routes/silenceRoutes')(jobs, saveJobs, logger, UPLOAD_DIR, port);
+const ttsRoutes = require('./routes/ttsRoutes')(jobs, saveJobs, logger);
+
+app.use('/subtitle', subtitleRoutes);
+app.use('/export', exportRoutes);
+app.use('/silence', silenceRoutes);
+app.use('/tts', ttsRoutes);
+
+// === 하위 호환 API 경로 (기존 프론트엔드 호환) ===
+app.post('/export-video', (req, res) => req.url = '/video' && exportRoutes(req, res));
+app.post('/export-clip', (req, res) => req.url = '/clip' && exportRoutes(req, res));
+app.post('/upload-logo', upload.single('logo'), (req, res) => {
+    if (!req.file) return res.status(400).send('No logo uploaded');
+    res.json({ logoName: req.file.filename });
+});
+app.get('/silence-detect/:jobId', (req, res) => {
+    req.url = `/detect/${req.params.jobId}`;
+    silenceRoutes(req, res);
+});
+app.post('/remove-silence', (req, res) => {
+    req.url = '/remove';
+    silenceRoutes(req, res);
+});
+
+// === 화자 분리 API ===
+app.post('/speaker-identify', async (req, res) => {
+    const { jobId } = req.body;
+    const job = jobs[jobId];
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (!job.segments || job.segments.length === 0) {
+        return res.status(400).json({ error: '화자 분리할 자막이 없습니다' });
+    }
+
+    const audioPath = path.join(UPLOAD_DIR, `${jobId}.wav`);
+    if (!fs.existsSync(audioPath)) {
+        return res.status(400).json({ error: '오디오 파일을 찾을 수 없습니다' });
+    }
+
+    try {
+        const result = await identifySpeakers(audioPath, job.segments);
+        job.segments = result.segments;
+        job.speakers = result.speakers;
+        saveJobs();
+        res.json({
+            segments: result.segments,
+            speakers: result.speakers,
+            message: `${result.speakers.length}명의 화자가 식별되었습니다.`
+        });
+    } catch (err) {
+        logger.error('[Speaker] API Failed', err);
+        res.status(500).json({ error: '화자 분리 실패: ' + err.message });
+    }
+});
+
+// 번역 라우트 (ttsRoutes에서 분리된 경로 매핑)
+app.get('/translate/languages', (req, res) => {
+    const { getSupportedLanguages } = require('./services/translationService');
+    res.json({ languages: getSupportedLanguages() });
+});
+app.post('/translate', async (req, res) => {
+    const { jobId, targetLang } = req.body;
+    const job = jobs[jobId];
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (!job.segments || job.segments.length === 0) {
+        return res.status(400).json({ error: '번역할 자막이 없습니다' });
+    }
+    try {
+        const { translateSegments } = require('./services/translationService');
+        const translated = await translateSegments(job.segments, 'ko', targetLang);
+        logger.audit('AI_ENGINE', 'TRANSLATE', { jobId, targetLang, count: translated.length });
+        res.json({ segments: translated });
+    } catch (err) {
+        logger.error('[Translate] Failed', err);
+        res.status(500).json({ error: '번역 실패: ' + err.message });
+    }
+});
+
+// === 파일 업로드 & AI 분석 ===
 app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded');
 
@@ -228,8 +196,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
     res.json({ jobId });
 });
 
-// transcribeWithWhisper removed - now imported from ./services/whisper_service_wrapper.js
-
+// === AI 전사(Transcription) 처리 ===
 async function processTranscription(jobId, videoPath, audioPath, targetLanguage) {
     const job = jobs[jobId];
     if (!job) return;
@@ -241,7 +208,7 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
         logger.info(`[Job ${jobId}] Phase 2: AI Intelligence Analysis (Gemini 2.0)`);
         job.progress = { stage: 'transcribing', updatedAt: Date.now() };
 
-        // Parallel Execution: Whisper (Local Python Process) + Gemini (Context) + Waveform
+        // 병렬 실행: Whisper + Gemini + Waveform
         const [whisperSegments, geminiData, waveformData] = await Promise.all([
             transcribeWithWhisper(audioPath).catch(err => {
                 logger.error("Local Python Whisper Failed", err);
@@ -257,7 +224,6 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
         if (whisperSegments.length > 0) {
             logger.info(`[Job ${jobId}] Using Whisper segments (${whisperSegments.length}). Starting Gemini text correction...`);
             job.progress = { stage: 'correcting', updatedAt: Date.now() };
-            // Phase 3: Gemini corrects only the text, Whisper timing stays
             job.segments = await correctTextWithGemini(audioPath, whisperSegments, targetLanguage).catch(err => {
                 logger.error("Gemini Text Correction Failed, using raw Whisper text", err);
                 return whisperSegments;
@@ -275,7 +241,6 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
         job.highlights = geminiData.highlights || [];
         job.waveform = waveformData;
 
-        // Critical: Mark as FAILED if segments are empty despite AI success response
         if (job.segments.length === 0) {
             job.status = 'FAILED';
             job.error = "Whisper AI가 자막을 생성하지 못했습니다. 오디오를 확인해 주세요.";
@@ -284,7 +249,6 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
         }
 
         saveJobs();
-
         logger.info(`[Job ${jobId}] Step COMPLETE: Analysis finished.`);
         logger.audit('AI_ENGINE', 'ANALYSIS_FINISH', { jobId, segmentCount: job.segments.length });
     } catch (error) {
@@ -295,74 +259,7 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
     }
 }
 
-// ===== 자막 CRUD API =====
-
-// 자막 수정 (전체 자막 배열 업데이트)
-app.patch('/subtitle/:jobId', (req, res) => {
-    const job = jobs[req.params.jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-    const { segments } = req.body;
-    if (!Array.isArray(segments)) return res.status(400).json({ error: 'segments 배열이 필요합니다' });
-    job.segments = segments;
-    saveJobs();
-    logger.audit('USER', 'SUBTITLE_UPDATE', { jobId: req.params.jobId, segmentCount: segments.length });
-    res.json({ success: true, segmentCount: segments.length });
-});
-
-// 자막 추가
-app.post('/subtitle/:jobId/add', (req, res) => {
-    const job = jobs[req.params.jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-    const { start, end, text } = req.body;
-    if (start === undefined || end === undefined || !text) {
-        return res.status(400).json({ error: 'start, end, text가 필요합니다' });
-    }
-    const newSegment = { start, end, text, confidence: 1.0, id: `seg_${Date.now()}` };
-    job.segments.push(newSegment);
-    job.segments.sort((a, b) => a.start - b.start);
-    saveJobs();
-    logger.audit('USER', 'SUBTITLE_ADD', { jobId: req.params.jobId });
-    res.json({ success: true, segment: newSegment });
-});
-
-// 자막 삭제
-app.delete('/subtitle/:jobId/:index', (req, res) => {
-    const job = jobs[req.params.jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-    const index = parseInt(req.params.index);
-    if (isNaN(index) || index < 0 || index >= job.segments.length) {
-        return res.status(400).json({ error: '유효하지 않은 인덱스입니다' });
-    }
-    job.segments.splice(index, 1);
-    saveJobs();
-    logger.audit('USER', 'SUBTITLE_DELETE', { jobId: req.params.jobId, index });
-    res.json({ success: true, remaining: job.segments.length });
-});
-
-// 자막 합치기
-app.post('/subtitle/:jobId/merge', (req, res) => {
-    const job = jobs[req.params.jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-    const { indexA, indexB } = req.body;
-    if (indexA === undefined || indexB === undefined) {
-        return res.status(400).json({ error: 'indexA, indexB가 필요합니다' });
-    }
-    const a = Math.min(indexA, indexB);
-    const b = Math.max(indexA, indexB);
-    if (a < 0 || b >= job.segments.length) {
-        return res.status(400).json({ error: '유효하지 않은 인덱스입니다' });
-    }
-    const segA = job.segments[a];
-    const segB = job.segments[b];
-    segA.end = segB.end;
-    segA.text = segA.text + ' ' + segB.text;
-    job.segments.splice(b, 1);
-    saveJobs();
-    logger.audit('USER', 'SUBTITLE_MERGE', { jobId: req.params.jobId, indexA: a, indexB: b });
-    res.json({ success: true, merged: segA });
-});
-
-// ===== 진행 상태 API =====
+// === 상태/통계 API ===
 app.get('/progress/:jobId', (req, res) => {
     const job = jobs[req.params.jobId];
     if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -373,90 +270,43 @@ app.get('/progress/:jobId', (req, res) => {
     });
 });
 
-// ===== 무음 감지/제거 API =====
-app.get('/silence-detect/:jobId', async (req, res) => {
-    const job = jobs[req.params.jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-
-    const audioPath = path.join(UPLOAD_DIR, `${req.params.jobId}.wav`);
-    if (!fs.existsSync(audioPath)) {
-        return res.status(400).json({ error: '오디오 파일을 찾을 수 없습니다' });
-    }
-
-    try {
-        const silenceSegments = await detectSilence(audioPath, -30, 0.5);
-        logger.audit('AI_ENGINE', 'SILENCE_DETECT', { jobId: req.params.jobId, count: silenceSegments.length });
-        res.json({ silenceSegments });
-    } catch (err) {
-        logger.error('[SilenceDetect] Failed', err);
-        res.status(500).json({ error: '무음 감지 실패: ' + err.message });
-    }
-});
-
-app.post('/remove-silence', async (req, res) => {
-    const { jobId, silenceSegments } = req.body;
-    const job = jobs[jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-
-    const inputPath = path.join(UPLOAD_DIR, `${jobId}${path.extname(job.fileName)}`);
-    if (!fs.existsSync(inputPath)) {
-        return res.status(400).json({ error: '원본 파일을 찾을 수 없습니다' });
-    }
-
-    try {
-        const outputPath = await removeSilence(inputPath, silenceSegments, UPLOAD_DIR);
-        logger.audit('AI_ENGINE', 'SILENCE_REMOVE', { jobId, removedCount: silenceSegments.length });
-        res.json({
-            downloadUrl: `http://localhost:${port}/uploads/${path.basename(outputPath)}`,
-            fileName: `silence_removed_${job.fileName}`
-        });
-    } catch (err) {
-        logger.error('[SilenceRemove] Failed', err);
-        res.status(500).json({ error: '무음 제거 실패: ' + err.message });
-    }
-});
-
-// ===== TTS API =====
-app.get('/tts/voices', (req, res) => {
-    const lang = req.query.lang || null;
-    res.json({ voices: getVoiceProfiles(lang) });
-});
-
-app.get('/tts/params/:voiceId', (req, res) => {
-    const params = getSpeechParams(req.params.voiceId);
-    res.json(params);
-});
-
-// ===== 번역 API =====
-app.get('/translate/languages', (req, res) => {
-    res.json({ languages: getSupportedLanguages() });
-});
-
-app.post('/translate', async (req, res) => {
-    const { jobId, targetLang } = req.body;
-    const job = jobs[jobId];
-    if (!job) return res.status(404).json({ error: 'Job not found' });
-    if (!job.segments || job.segments.length === 0) {
-        return res.status(400).json({ error: '번역할 자막이 없습니다' });
-    }
-
-    try {
-        const translated = await translateSegments(job.segments, 'ko', targetLang);
-        logger.audit('AI_ENGINE', 'TRANSLATE', { jobId, targetLang, count: translated.length });
-        res.json({ segments: translated });
-    } catch (err) {
-        logger.error('[Translate] Failed', err);
-        res.status(500).json({ error: '번역 실패: ' + err.message });
-    }
-});
-
 app.get('/status/:jobId', (req, res) => {
     const job = jobs[req.params.jobId];
     if (!job) return res.status(404).send('Job not found');
     res.json(job);
 });
 
-// 24h Automatic Job Cleanup Scheduler
+app.get('/stats', (req, res) => {
+    try {
+        const jobEntries = Object.values(jobs || {});
+        const totalProjects = jobEntries.length;
+        const completedProjects = jobEntries.filter(j => j.status === 'COMPLETED').length;
+        const totalSegments = jobEntries.reduce((acc, j) => acc + (j.segments?.length || 0), 0);
+
+        let totalScore = 0;
+        let scoreCount = 0;
+        jobEntries.forEach(j => {
+            if (j.sentimentScore !== undefined) {
+                totalScore += j.sentimentScore;
+                scoreCount++;
+            }
+        });
+        const avgScore = scoreCount > 0 ? (totalScore / scoreCount).toFixed(2) : "0.50";
+
+        res.json({
+            totalProjects,
+            completedProjects,
+            totalSegments,
+            avgSentiment: avgScore,
+            uptime: process.uptime()
+        });
+    } catch (e) {
+        logger.error("Stats calculation failed", e);
+        res.status(500).json({ error: "통계 계산 중 오류가 발생했습니다." });
+    }
+});
+
+// === 24시간 자동 Job 정리 스케줄러 ===
 setInterval(() => {
     logger.info("[Cleanup] Scanning for expired jobs (24h+)...");
     const now = Date.now();
@@ -467,7 +317,6 @@ setInterval(() => {
         const createdAt = new Date(job.createdAt || 0).getTime();
 
         if (now - createdAt > 24 * 60 * 60 * 1000) {
-            // Delete files
             const videoPath = path.join(UPLOAD_DIR, `${jobId}${path.extname(job.fileName)}`);
             const audioPath = path.join(UPLOAD_DIR, `${jobId}.wav`);
             const srtPath = path.join(UPLOAD_DIR, `${jobId}.srt`);
@@ -484,8 +333,9 @@ setInterval(() => {
         saveJobs();
         logger.info(`[Cleanup] Successfully removed ${deletedCount} expired jobs.`);
     }
-}, 60 * 60 * 1000); // Check every hour
+}, 60 * 60 * 1000);
 
+// === 서버 시작 ===
 app.listen(port, () => {
     logger.info(`CreativeAI Insight Backend listening at http://localhost:${port}`);
 }).on('error', (err) => {

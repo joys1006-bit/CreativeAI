@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { SpeakerBadge } from './SpeakerBadge';
 
 /**
  * 워드칩 에디터 컴포넌트
@@ -135,6 +136,15 @@ const WordChipEditor = ({ captions, currentTime, syncOffset, onSeek, onUpdateCap
                                             className="confidence-indicator"
                                             style={{ background: (cap.confidence || 0.8) >= 0.8 ? 'var(--accent-green)' : 'var(--accent-orange)' }}
                                         />
+                                        {/* 화자 배지 (Phase 2) */}
+                                        {cap.speaker && (
+                                            <SpeakerBadge
+                                                speaker={cap.speaker}
+                                                speakerLabel={cap.speakerLabel}
+                                                speakerColor={cap.speakerColor}
+                                                size="mini"
+                                            />
+                                        )}
                                         {/* 액션 버튼들 */}
                                         <div className="chip-actions">
                                             {onSplitCaption && (
