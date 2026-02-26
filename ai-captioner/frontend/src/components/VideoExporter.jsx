@@ -48,7 +48,7 @@ const VideoExporter = ({
     const drawSubtitle = useCallback((ctx, cap, w, h) => {
         if (!cap) return;
 
-        const fontSize = subtitleStyle.fontSize || 24;
+        const fontSize = subtitleStyle.fontSize || 20;
         const fontFamily = subtitleStyle.fontFamily || "'Pretendard', sans-serif";
         const fontWeight = subtitleStyle.bold ? 'bold' : 'normal';
         const fontStyle = subtitleStyle.italic ? 'italic' : 'normal';
