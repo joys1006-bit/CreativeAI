@@ -280,18 +280,14 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
                     });
                 }
             } else {
-                // duration만 긴 경우 (짧은 텍스트) — 시간 기준 분할
-                const chunkCount = Math.ceil(dur / MAX_SEG_DURATION);
-                const chunkDur = dur / chunkCount;
-                for (let i = 0; i < chunkCount; i++) {
-                    finalSegments.push({
-                        ...seg,
-                        id: finalSegments.length,
-                        text: i === 0 ? seg.text : '',
-                        start: seg.start + i * chunkDur,
-                        end: seg.start + (i + 1) * chunkDur,
-                    });
-                }
+                // duration만 긴 경우 (짧은 텍스트) — 분할 대신 duration 캡핑
+                // 한국어 기준 1자당 약 0.15초 (빠른 말), 최소 2초
+                const cappedDur = Math.max(2, Math.min(MAX_SEG_DURATION, len * 0.15));
+                finalSegments.push({
+                    ...seg,
+                    id: finalSegments.length,
+                    end: seg.start + cappedDur,
+                });
             }
             logger.info(`[Split] "${text.substring(0, 20)}..." (${dur.toFixed(1)}s) → ${finalSegments.length} parts`);
         }
