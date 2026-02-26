@@ -18,25 +18,17 @@ class WhisperService:
             raise RuntimeError("Failed to load Whisper model")
             
         print(f"Transcribing audio: {audio_path}...")
-        # 싱크 정밀도 최적화 파라미터
-        # - word_timestamps: 단어 단위 타이밍으로 고정밀 싱크
-        # - no_speech_threshold: 0.4로 낮춰서 작은 소리도 캡처
-        # - logprob_threshold: -1.0으로 완화하여 불확실한 구간도 포함
-        # - condition_on_previous_text: False로 환각 방지
-        # - beam_size: 5로 설정하여 정확도 향상
+        # 원래 안정적 설정으로 복원 (small 모델이 한국어에서 오히려 악화)
         result = self.model.transcribe(
             audio_path,
             language="ko",
             word_timestamps=True,
-            no_speech_threshold=0.4,
-            logprob_threshold=-1.0,
+            no_speech_threshold=0.6,
+            logprob_threshold=-0.8,
             condition_on_previous_text=False,
-            compression_ratio_threshold=2.4,
-            beam_size=5,
-            best_of=5,
+            compression_ratio_threshold=2.0,
         )
         
-        # Original simple return: return result["segments"]
         # Enriched return for Vrew features (Confidence, Words)
         segments = []
         for seg in result["segments"]:
@@ -55,13 +47,13 @@ class WhisperService:
                 "start": seg["start"],
                 "end": seg["end"],
                 "text": seg["text"],
-                "confidence": seg.get("avg_logprob", 0), # Simple proxy or calculate from words
+                "confidence": seg.get("avg_logprob", 0),
                 "words": words_info
             })
             
         return segments
-# Singleton instance — small 모델로 업그레이드 (base 대비 타이밍 정밀도 2배 향상)
-whisper_service = WhisperService(model_name="small")
+# Singleton — base 모델 사용 (한국어 안정성 확인됨)
+whisper_service = WhisperService(model_name="base")
 
 if __name__ == "__main__":
     import sys
