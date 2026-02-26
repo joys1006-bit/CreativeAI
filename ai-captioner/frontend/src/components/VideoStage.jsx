@@ -187,7 +187,7 @@ const VideoStage = ({
             position: 'absolute',
             zIndex: 6,
             fontFamily: subtitleStyle.fontFamily || "'Pretendard', sans-serif",
-            fontSize: `${subtitleStyle.fontSize || 24}px`,
+            fontSize: `${subtitleStyle.fontSize || 18}px`,
             color: subtitleStyle.color || '#FFFFFF',
             background: subtitleStyle.bgColor || 'rgba(0,0,0,0.6)',
             fontWeight: subtitleStyle.bold ? 700 : 400,

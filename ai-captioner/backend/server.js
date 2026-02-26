@@ -234,6 +234,72 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
         }
         job.progress = { stage: 'finalizing', updatedAt: Date.now() };
 
+        // === 최종 세그먼트 분할 후처리 (Gemini 성공/실패 관계없이 항상 적용) ===
+        const MAX_SEG_DURATION = 5; // 최대 5초
+        const MAX_SEG_CHARS = 40;   // 최대 40자
+        const finalSegments = [];
+        for (const seg of job.segments) {
+            const dur = seg.end - seg.start;
+            const len = (seg.text || '').length;
+
+            if (dur <= MAX_SEG_DURATION && len <= MAX_SEG_CHARS) {
+                finalSegments.push(seg);
+                continue;
+            }
+
+            // 긴 세그먼트 분할
+            const text = seg.text || '';
+            // 문장 부호 기준 분할 시도
+            const parts = text.split(/(?<=[.!?。，,、\n])\s*/).filter(s => s.trim());
+
+            if (parts.length > 1) {
+                const partDur = dur / parts.length;
+                for (let i = 0; i < parts.length; i++) {
+                    finalSegments.push({
+                        ...seg,
+                        id: finalSegments.length,
+                        text: parts[i].trim(),
+                        start: seg.start + i * partDur,
+                        end: seg.start + (i + 1) * partDur,
+                    });
+                }
+            } else if (len > MAX_SEG_CHARS) {
+                // 문장 부호 없으면 글자 수 기준 분할
+                const chunkCount = Math.ceil(len / MAX_SEG_CHARS);
+                const chunkSize = Math.ceil(len / chunkCount);
+                const chunkDur = dur / chunkCount;
+                for (let i = 0; i < chunkCount; i++) {
+                    const chunkText = text.substring(i * chunkSize, Math.min((i + 1) * chunkSize, len));
+                    if (!chunkText.trim()) continue;
+                    finalSegments.push({
+                        ...seg,
+                        id: finalSegments.length,
+                        text: chunkText.trim(),
+                        start: seg.start + i * chunkDur,
+                        end: seg.start + (i + 1) * chunkDur,
+                    });
+                }
+            } else {
+                // duration만 긴 경우 (짧은 텍스트) — 시간 기준 분할
+                const chunkCount = Math.ceil(dur / MAX_SEG_DURATION);
+                const chunkDur = dur / chunkCount;
+                for (let i = 0; i < chunkCount; i++) {
+                    finalSegments.push({
+                        ...seg,
+                        id: finalSegments.length,
+                        text: i === 0 ? seg.text : '',
+                        start: seg.start + i * chunkDur,
+                        end: seg.start + (i + 1) * chunkDur,
+                    });
+                }
+            }
+            logger.info(`[Split] "${text.substring(0, 20)}..." (${dur.toFixed(1)}s) → ${finalSegments.length} parts`);
+        }
+        // ID 재할당
+        finalSegments.forEach((s, i) => { s.id = i; });
+        job.segments = finalSegments;
+        logger.info(`[Pipeline] Final segment count: ${job.segments.length}`);
+
         job.summary = geminiData.summary;
         job.keywords = geminiData.keywords;
         job.sentiment = geminiData.sentiment;
