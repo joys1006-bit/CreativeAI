@@ -315,7 +315,10 @@ const VideoStage = ({
                                     onDoubleClick={handleSubtitleDoubleClick}
                                     title="드래그: 위치 이동 / 더블클릭: 자막 편집"
                                 >
-                                    {currentCaption.text}
+                                    {currentCaption.text.length > 60
+                                        ? currentCaption.text.substring(0, 60) + '…'
+                                        : currentCaption.text
+                                    }
                                     {subtitlePos && (
                                         <span style={{
                                             position: 'absolute', top: '-18px', right: '0',

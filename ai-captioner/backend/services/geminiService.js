@@ -354,18 +354,71 @@ ${segmentsForPrompt}
                 // 겹침 제거 + 최소 간격 보장 (후처리)
                 for (let i = 0; i < corrected.length - 1; i++) {
                     if (corrected[i].end > corrected[i + 1].start) {
-                        // 겹치면 이전 세그먼트의 end를 다음 start 직전으로 조정
                         corrected[i].end = corrected[i + 1].start - 0.05;
                         console.log(`  [overlap fix] seg ${i} end adjusted to ${corrected[i].end.toFixed(2)}s`);
                     }
-                    // 최소 duration 보장 (0.3초 이하면 0.3초로)
                     if (corrected[i].end - corrected[i].start < 0.3) {
                         corrected[i].end = corrected[i].start + 0.3;
                     }
                 }
 
+                // === 긴 세그먼트 자동 분할 (5초 초과 또는 40자 초과) ===
+                const MAX_DURATION = 5; // 최대 5초
+                const MAX_CHARS = 40;   // 최대 40자
+                const splitResult = [];
+                for (const seg of corrected) {
+                    const duration = seg.end - seg.start;
+                    const textLen = seg.text.length;
+
+                    if (duration <= MAX_DURATION && textLen <= MAX_CHARS) {
+                        splitResult.push(seg);
+                        continue;
+                    }
+
+                    // 분할이 필요한 세그먼트
+                    // 문장 부호 기준으로 분할 시도
+                    const sentences = seg.text.split(/(?<=[.!?。，,、\n])\s*/);
+                    if (sentences.length <= 1 && textLen > MAX_CHARS) {
+                        // 문장 부호가 없으면 MAX_CHARS 단위로 강제 분할
+                        const chunks = [];
+                        for (let i = 0; i < textLen; i += MAX_CHARS) {
+                            chunks.push(seg.text.substring(i, Math.min(i + MAX_CHARS, textLen)));
+                        }
+                        const chunkDuration = duration / chunks.length;
+                        for (let i = 0; i < chunks.length; i++) {
+                            splitResult.push({
+                                ...seg,
+                                id: `${seg.id}_${i}`,
+                                text: chunks[i].trim(),
+                                start: seg.start + i * chunkDuration,
+                                end: seg.start + (i + 1) * chunkDuration,
+                            });
+                        }
+                    } else if (sentences.length > 1) {
+                        // 문장 부호 기준 분할
+                        const sentDuration = duration / sentences.length;
+                        for (let i = 0; i < sentences.length; i++) {
+                            if (!sentences[i].trim()) continue;
+                            splitResult.push({
+                                ...seg,
+                                id: `${seg.id}_${i}`,
+                                text: sentences[i].trim(),
+                                start: seg.start + i * sentDuration,
+                                end: seg.start + (i + 1) * sentDuration,
+                            });
+                        }
+                    } else {
+                        splitResult.push(seg);
+                    }
+                    console.log(`  [split] seg "${seg.text.substring(0, 20)}..." (${duration.toFixed(1)}s, ${textLen}ch) → ${splitResult.length - (splitResult.length - 1)} parts`);
+                }
+
+                // ID 재할당
+                splitResult.forEach((seg, idx) => { seg.id = idx; });
+                console.log(`[AI-Correct] Final: ${corrected.length} → ${splitResult.length} segments after split`);
+
                 await fileManager.deleteFile(name).catch(() => { });
-                return corrected;
+                return splitResult;
 
             } catch (e) {
                 lastError = e;
