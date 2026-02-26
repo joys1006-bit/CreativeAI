@@ -37,9 +37,18 @@ const SHORTCUTS = [
         ],
     },
     {
+        category: '싱크 조절',
+        items: [
+            { keys: ['['], desc: '싱크 -0.5초' },
+            { keys: [']'], desc: '싱크 +0.5초' },
+        ],
+    },
+    {
         category: '보기',
         items: [
             { keys: ['?'], desc: '단축키 가이드 토글' },
+            { keys: ['Ctrl', 'F'], desc: '자막 검색' },
+            { keys: ['F11'], desc: '전체화면 토글' },
             { keys: ['Ctrl', 'I'], desc: 'AI 분석 패널 토글' },
             { keys: ['Ctrl', 'T'], desc: '테마 전환' },
         ],

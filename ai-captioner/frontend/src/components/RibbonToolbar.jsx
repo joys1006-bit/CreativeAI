@@ -20,6 +20,7 @@ const RibbonToolbar = ({
     onTranslate, targetLang, setTargetLang, hasTranslation,
     onImportSRT,
     onIdentifySpeakers, hasSpeakers,
+    onShowProjectManager,
 }) => {
     const isProcessing = status === 'processing' || status === 'uploading';
     const [hoveredBtn, setHoveredBtn] = useState(null);
@@ -238,6 +239,9 @@ const RibbonToolbar = ({
                                 </button>
                                 <button style={S.btn('srt-import')} onClick={onImportSRT} {...hoverProps('srt-import')}>
                                     <span style={S.icon}>📄</span><span>SRT 불러오기</span>
+                                </button>
+                                <button style={S.btn('project-mgr')} onClick={onShowProjectManager} {...hoverProps('project-mgr')}>
+                                    <span style={S.icon}>📁</span><span>프로젝트</span>
                                 </button>
                             </div>
                         </div>

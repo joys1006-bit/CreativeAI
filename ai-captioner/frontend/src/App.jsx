@@ -20,6 +20,7 @@ import PlaybackSpeed from './components/PlaybackSpeed';
 import SubtitleSearch from './components/SubtitleSearch';
 import SubtitleStats from './components/SubtitleStats';
 import VideoExporter from './components/VideoExporter';
+import ProjectManager from './components/ProjectManager';
 import { ThemeToggle } from './components/ThemeProvider';
 import { SpeakerLegend } from './components/SpeakerBadge';
 
@@ -32,7 +33,7 @@ const API_BASE = 'http://localhost:8000';
 
 const DEFAULT_SUBTITLE_STYLE = {
     fontFamily: "'Pretendard', sans-serif",
-    fontSize: 24,
+    fontSize: 20,
     color: '#FFFFFF',
     bgColor: 'rgba(0,0,0,0.6)',
     position: 'bottom',
@@ -98,6 +99,7 @@ const App = () => {
     const [showSearch, setShowSearch] = useState(false);
     const [showStats, setShowStats] = useState(false);
     const [showVideoExporter, setShowVideoExporter] = useState(false);
+    const [showProjectManager, setShowProjectManager] = useState(false);
 
     // --- State: Toast ---
     const [toasts, setToasts] = useState([]);
@@ -560,6 +562,7 @@ const App = () => {
                     onImportSRT={handleImportSRT}
                     onIdentifySpeakers={identifySpeakersHandler}
                     hasSpeakers={speakers.length > 0}
+                    onShowProjectManager={() => setShowProjectManager(true)}
                 />
 
                 <main className="main-layout">
@@ -679,6 +682,20 @@ const App = () => {
                     subtitleStyle={subtitleStyle}
                     overlayImage={overlayImage}
                     duration={duration}
+                />
+
+                <ProjectManager
+                    isVisible={showProjectManager}
+                    onClose={() => setShowProjectManager(false)}
+                    captions={captions}
+                    syncOffset={syncOffset}
+                    subtitleStyle={subtitleStyle}
+                    onLoadProject={(proj) => {
+                        if (proj.captions) setCaptions(proj.captions);
+                        if (proj.syncOffset != null) setSyncOffset(proj.syncOffset);
+                        if (proj.subtitleStyle) setSubtitleStyle(proj.subtitleStyle);
+                        addToast('success', `프로젝트 "${proj.name}" 불러옴`);
+                    }}
                 />
             </div>
         </DropZone>
