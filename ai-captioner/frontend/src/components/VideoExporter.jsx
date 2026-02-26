@@ -121,11 +121,16 @@ const VideoExporter = ({
             video.onloadeddata = resolve;
         });
 
-        const w = video.videoWidth || 1280;
-        const h = video.videoHeight || 720;
+        // 16:9 YouTube 롱폼 기준 해상도 (1920x1080)
+        const w = 1920;
+        const h = 1080;
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext('2d');
+
+        // 원본 비디오 크기 (cover fit 계산용)
+        const vw = video.videoWidth || 1280;
+        const vh = video.videoHeight || 720;
 
         // MediaRecorder 설정
         const stream = canvas.captureStream(30);
@@ -190,11 +195,23 @@ const VideoExporter = ({
             // 프레임 그리기
             ctx.clearRect(0, 0, w, h);
 
-            // 1. 비디오 or 오버레이 이미지
+            // 1. 비디오 or 오버레이 이미지 (cover fit으로 16:9에 맞게)
+            // cover fit: 비율 유지하면서 캔버스를 완전히 채움
+            const drawCoverFit = (source) => {
+                const sw = source.videoWidth || source.naturalWidth || source.width;
+                const sh = source.videoHeight || source.naturalHeight || source.height;
+                const scale = Math.max(w / sw, h / sh);
+                const dw = sw * scale;
+                const dh = sh * scale;
+                const dx = (w - dw) / 2;
+                const dy = (h - dh) / 2;
+                ctx.drawImage(source, dx, dy, dw, dh);
+            };
+
             if (overlayImgRef.current && overlayImgRef.current.complete) {
-                ctx.drawImage(overlayImgRef.current, 0, 0, w, h);
+                drawCoverFit(overlayImgRef.current);
             } else {
-                ctx.drawImage(video, 0, 0, w, h);
+                drawCoverFit(video);
             }
 
             // 2. 자막

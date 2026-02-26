@@ -221,13 +221,17 @@ async function processTranscription(jobId, videoPath, audioPath, targetLanguage)
             generateWaveform(audioPath, 20).catch(err => [])
         ]);
 
-        if (whisperSegments.length > 0) {
-            logger.info(`[Job ${jobId}] Using Whisper segments (${whisperSegments.length}). Starting Gemini text correction...`);
-            job.progress = { stage: 'correcting', updatedAt: Date.now() };
-            job.segments = await correctTextWithGemini(audioPath, whisperSegments, targetLanguage).catch(err => {
-                logger.error("Gemini Text Correction Failed, using raw Whisper text", err);
-                return whisperSegments;
+        // === Gemini 직접 전사를 메인 엔진으로 사용 (Whisper는 fallback) ===
+        // Gemini가 오디오를 직접 듣고 2~5초 세그먼트 + 정확한 타이밍을 생성
+        if (geminiData.segments && geminiData.segments.length > 0) {
+            logger.info(`[Job ${jobId}] ✅ Using GEMINI direct transcription (${geminiData.segments.length} segs)`);
+            job.segments = geminiData.segments;
+            job.segments.slice(0, 10).forEach((s, i) => {
+                logger.info(`  [G${i}] ${(s.start || 0).toFixed(2)}-${(s.end || 0).toFixed(2)}s "${(s.text || '').substring(0, 30)}"`);
             });
+        } else if (whisperSegments.length > 0) {
+            logger.warn(`[Job ${jobId}] ⚠️ Gemini 0 segs. Falling back to Whisper (${whisperSegments.length} segs)`);
+            job.segments = whisperSegments;
         } else {
             logger.warn(`[Job ${jobId}] Whisper returned 0 segments. Fallback to Gemini.`);
             job.segments = geminiData.segments;
