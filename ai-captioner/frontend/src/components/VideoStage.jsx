@@ -104,9 +104,9 @@ const VideoStage = ({
             };
         }
         switch (subtitleStyle.position) {
-            case 'top': return { top: '10%', bottom: 'auto' };
-            case 'center': return { top: '50%', bottom: 'auto', transform: 'translate(-50%, -50%)' };
-            default: return { bottom: '10%', top: 'auto' };
+            case 'top': return { top: '8%', bottom: 'auto', left: '50%', transform: 'translateX(-50%)' };
+            case 'center': return { top: '50%', bottom: 'auto', left: '50%', transform: 'translate(-50%, -50%)' };
+            default: return { bottom: '8%', top: 'auto', left: '50%', transform: 'translateX(-50%)' };
         }
     };
 
