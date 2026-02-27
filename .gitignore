@@ -55,8 +55,20 @@ ai-captioner/backend/uploads/
 ai-captioner/backend/jobs.json
 creativeai-backend/*.log
 
+# Test / Debug files (CISO 보안 권고)
+ai-captioner/backend/test_*.js
+ai-captioner/backend/debug_*.js
+ai-captioner/backend/verify_*.js
+ai-captioner/backend/scan_*.js
+ai-captioner/backend/list_models.js
+ai-captioner/backend/get_models_info.js
+ai-captioner/backend/self_verify.js
+ai-captioner/backend/*.log
+
 # Electron build
 ai-captioner/frontend/dist-electron/
 ai-captioner/frontend/release/
 
-
+# JSON data dumps
+creations_*.json
+marketplace_*.json
